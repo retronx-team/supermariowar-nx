@@ -53,6 +53,24 @@
 #endif
 #endif
 
+#ifdef __SWITCH__
+extern "C" {
+#include <switch/runtime/devices/socket.h>
+#include <switch/runtime/nxlink.h>
+#include <switch/services/applet.h>
+void userAppInit() {
+    socketInitializeDefault();
+    nxlinkStdio();
+
+    appletInitializeGamePlayRecording();
+    appletSetGamePlayRecordingState(1);
+}
+
+void userAppExit() {
+    socketExit();
+}
+}
+#endif
 
 //now it's really time for an "engine" (aka resource manager)
 
