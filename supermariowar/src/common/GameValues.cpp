@@ -62,6 +62,22 @@ SDL_KEYTYPE controlkeys[2][2][4][NUM_KEYS] = { { { {SDLK_LEFT, SDLK_RIGHT, SDLK_
         }
     }
 };
+#elif defined(__SWITCH__)
+    //left, right, jump, down, turbo, powerup, start, cancel;
+    { { {JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_STICK_1_DOWN, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 10, JOY_BUTTON_START + 11},
+            {JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_STICK_1_DOWN, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 10, JOY_BUTTON_START + 11},
+            {JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_STICK_1_DOWN, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 10, JOY_BUTTON_START + 11},
+            {JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_STICK_1_DOWN, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 10, JOY_BUTTON_START + 11}
+        },
+
+        //up, down, left, right, select, cancel, random, fast scroll
+        {   {JOY_STICK_1_UP, JOY_STICK_1_DOWN, JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 3},
+            {JOY_STICK_1_UP, JOY_STICK_1_DOWN, JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 3},
+            {JOY_STICK_1_UP, JOY_STICK_1_DOWN, JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 3},
+            {JOY_STICK_1_UP, JOY_STICK_1_DOWN, JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 3}
+        }
+    }
+};
 #else
     //left, right, jump, down, turbo, powerup, start, cancel;
     { { {JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_STICK_1_DOWN, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 3, JOY_BUTTON_START + 4},
@@ -229,7 +245,7 @@ void CGameValues::init()
         }
 
         //Set the players input to the default configuration (will be overwritten by options.bin settings)
-#ifdef _XBOX
+#if defined(_XBOX) || defined(__SWITCH__)
         inputConfiguration[iPlayer][1].iDevice = iPlayer;
         playerInput.inputControls[iPlayer] = &inputConfiguration[iPlayer][1];
 #else
@@ -446,7 +462,7 @@ void CGameValues::ReadBinaryConfig() {
         for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++) {
             short iDevice = controls.read_i16();
 
-#ifdef _XBOX
+#if defined(_XBOX) || defined(__SWITCH__)
             playerInput.inputControls[iPlayer] = &inputConfiguration[iPlayer][1]; //Always use gamepads as input devices on xbox
 #else
             if (iDevice >= joystickcount)

@@ -93,6 +93,12 @@ MI_InputControlField::~MI_InputControlField()
         "Pad Left", "Pad Right", "A Button", "B Button", "X Button", "Y Button", "Black Button", "White Button", "Left Trigger", "Right Trigger",
         "Start Button", "Back Button", "Left Stick Click", "Right Stick Click", "Button 1", "Button 2", "Button 3", "Button 4", "Button 5", "Button 6"
     };
+#elif defined(__SWITCH__)
+    const char * MI_InputControlField::Joynames[30] = {
+        "Left Stick Up", "Left Stick Down", "Left Stick Left", "Left Stick Right", "Right Stick Up", "Right Stick Down", "Right Stick Left", "Right Stick Right", "Button 1", "Button 2",
+        "Button 3", "Button 4", "A Button", "B Button", "X Button", "Y Button", "Left Stick Button", "Right Stick Button", "L Trigger", "R Trigger",
+        "ZL Trigger", "ZR Trigger", "Plus Button", "Minus Button", "D-Pad Left", "D-Pad Up", "D-Pad Right", "D-Pad Down", "Button 5", "Button 6"
+    };
 #else
     const char * MI_InputControlField::Joynames[30] = {
         "Joystick Up", "Joystick Down", "Joystick Left", "Joystick Right", "Stick 2 Up", "Stick 2 Down", "Stick 2 Left", "Stick 2 Right", "Pad Up", "Pad Down",

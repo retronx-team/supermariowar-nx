@@ -21,7 +21,7 @@ CPlayerInput::CPlayerInput()
 
 void CPlayerInput::CheckIfMouseUsed()
 {
-#ifndef _XBOX
+#if !defined(_XBOX) && !defined(__SWITCH__)
 
     for (short iGameState = 0; iGameState < 2; iGameState++) {
         for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++) {
@@ -56,7 +56,7 @@ void CPlayerInput::ClearPressedKeys(short iGameState)
         for (int iKey = 0; iKey < NUM_KEYS; iKey++) {
 			outputControl->keys[iKey].fPressed = false;
 
-#ifndef _XBOX
+#if !defined(_XBOX) && !defined(__SWITCH__)
             if (fUsingMouse) {
 				SDL_KEYTYPE iInputKey = inputControl->keys[iKey];
 
