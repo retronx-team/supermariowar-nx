@@ -11,6 +11,13 @@ extern SDL_Surface* screen;
 #define GFX_BPP 16
 #define GFX_SCREEN_W 640
 #define GFX_SCREEN_H 480
+#ifdef __SWITCH__
+#define GFX_WIN_W 1920
+#define GFX_WIN_H 1080
+#else
+#define GFX_WIN_W GFX_SCREEN_W
+#define GFX_WIN_H GFX_SCREEN_H
+#endif
 
 enum SDL_Errors {
     E_INIT_SDL,
@@ -200,7 +207,7 @@ void GraphicsSDL::RecreateWindow(bool fullscreen)
 
     sdl2_window = SDL_CreateWindow("smw",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        GFX_SCREEN_W, GFX_SCREEN_H,
+        GFX_WIN_W, GFX_WIN_H,
         fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 
     if (!sdl2_window) {
