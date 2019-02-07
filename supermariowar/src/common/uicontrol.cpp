@@ -6,6 +6,38 @@
 #include <cmath>
 #include <cstring>
 
+#ifdef __SWITCH__
+extern "C" {
+#include <switch/applets/swkbd.h>
+
+static bool _switchOSKInput(char* header, char* initialValue, char* disallowedChars, char* out, size_t maxlen) {
+
+    printf("_switchOSKInput: header = \"%s\", initialValue = \"%s\", maxlen = %u);\n", header, initialValue ? initialValue : "NULL", maxlen);
+    SwkbdConfig kbd;
+    Result rc = swkbdCreate(&kbd, 0);
+    printf("swkbdCreate(): 0x%x\n", rc);
+
+    if (R_SUCCEEDED(rc)) {
+        swkbdConfigMakePresetDefault(&kbd);
+        swkbdConfigSetHeaderText(&kbd, header);
+        //kbd.arg.arg.stringLenMaxExt = maxlen-1;
+        kbd.arg.arg.stringLenMax = maxlen-1;
+        if(initialValue) {
+            swkbdConfigSetInitialText(&kbd, initialValue);
+        }
+        rc = swkbdShow(&kbd, out, maxlen);
+        printf("swkbdShow(): 0x%x\n", rc);
+        if (R_SUCCEEDED(rc)) {
+            printf("swkbd out str: %s\n", out);
+        }
+        swkbdClose(&kbd);
+    }
+
+    return R_SUCCEEDED(rc);
+}
+}
+#endif
+
 extern CGameValues game_values;
 extern CResourceManager* rm;
 
@@ -597,8 +629,20 @@ MenuCodeEnum MI_TextField::Modify(bool modify)
     if (MENU_CODE_NONE != mcControlSelectedCode)
         return mcControlSelectedCode;
 
+#ifdef __SWITCH__
+    if (modify) {
+        char* outstr = new char[iMaxChars];
+        if(_switchOSKInput(szName, szValue, szDisallowedChars, outstr, iMaxChars)) {
+            strncpy(szValue, outstr, iMaxChars);
+            Refresh();
+            Modify(false);
+            return MENU_CODE_UNSELECT_ITEM;
+        }
+    }
+#endif
     miModifyCursor->Show(modify);
     fModifying = modify;
+
     return MENU_CODE_MODIFY_ACCEPTED;
 }
 
