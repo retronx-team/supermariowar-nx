@@ -234,7 +234,12 @@ MenuCodeEnum MI_SelectField::SendInput(CPlayerInput * playerInput)
         if (fFastScroll && playerInput->outputControls[iPlayer].menu_scrollfast.fDown)
             iNumMoves = 10;
 
+#ifdef __SWITCH__
+        // prevent split joycon option from flickering when enabling/disabling split joycon mode
+        if (playerInput->outputControls[iPlayer].menu_right.fPressed) {
+#else
         if (playerInput->outputControls[iPlayer].menu_right.fPressed || playerInput->outputControls[iPlayer].menu_down.fPressed) {
+#endif
             bool fMoved = false;
 
             for (short iMove = 0; iMove < iNumMoves; iMove++)
@@ -243,8 +248,12 @@ MenuCodeEnum MI_SelectField::SendInput(CPlayerInput * playerInput)
             if (fMoved)
                 return mcItemChangedCode;
         }
-
+#ifdef __SWITCH__
+        // prevent split joycon option from flickering when enabling/disabling split joycon mode
+        if (playerInput->outputControls[iPlayer].menu_left.fPressed) {
+#else
         if (playerInput->outputControls[iPlayer].menu_left.fPressed || playerInput->outputControls[iPlayer].menu_up.fPressed) {
+#endif
             bool fMoved = false;
 
             for (short iMove = 0; iMove < iNumMoves; iMove++)

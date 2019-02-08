@@ -14,5 +14,4 @@ This uses:
 Download the latest release, and extract the archive in the `/switch` folder on your SD Card. Then, run the game from the [hbmenu](https://github.com/switchbrew/nx-hbmenu) using [hbl](https://github.com/switchbrew/nx-hbloader).
 
 ## Todo
-* split joycon option
 * networking

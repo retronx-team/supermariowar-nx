@@ -26,6 +26,10 @@ private:
     MI_SelectField * miFullscreenField;
 #endif //_XBOX
 
+#ifdef __SWITCH__
+    MI_SelectField * miFilteringField;
+#endif
+
     MI_PacksField * miMenuGraphicsPackField;
     MI_PacksField * miWorldGraphicsPackField;
     MI_PacksField * miGameGraphicsPackField;

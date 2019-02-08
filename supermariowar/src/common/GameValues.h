@@ -285,6 +285,10 @@ public:
     short		unlocksecret3part1[4];
     short		unlocksecret3part2[4];
     bool		unlocksecretunlocked[4];
+#ifdef __SWITCH__
+    bool        singleJoyconMode;
+    bool        filtering;
+#endif
 };
 
 #endif // GAMEVALUES_H

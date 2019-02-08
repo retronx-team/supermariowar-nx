@@ -252,6 +252,10 @@ void CGameValues::init()
         playerInput.inputControls[iPlayer] = &inputConfiguration[iPlayer][0];
 #endif
     }
+#ifdef __SWITCH__
+    singleJoyconMode = false;
+    filtering = false;
+#endif
 }
 
 void CGameValues::resetGameplaySettings()
@@ -434,6 +438,11 @@ void CGameValues::ReadBinaryConfig() {
         worldgraphicspacklist->SetCurrent(options.read_u8());
         gamegraphicspacklist->SetCurrent(options.read_u8());
 
+#ifdef __SWITCH__
+        singleJoyconMode = options.read_bool();
+        filtering = options.read_bool();
+#endif
+
         sfx_setmusicvolume(musicvolume);
         sfx_setsoundvolume(soundvolume);
     }
@@ -586,6 +595,12 @@ void CGameValues::WriteConfig()
         options.write_u8(menugraphicspacklist->GetCurrentIndex());
         options.write_u8(worldgraphicspacklist->GetCurrentIndex());
         options.write_u8(gamegraphicspacklist->GetCurrentIndex());
+
+#ifdef __SWITCH__
+        options.write_bool(singleJoyconMode);
+        options.write_bool(filtering);
+#endif
+
     }
     catch (std::exception const& error)
     {

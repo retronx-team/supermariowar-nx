@@ -8,6 +8,15 @@
 
 extern SDL_Surface* screen;
 
+#ifdef __SWITCH__
+#include <switch.h>
+#include "GameValues.h"
+static void update_joycon_mode(); // call this once per frame to update split/dual joycon mode
+static int singleJoycons = 0; // are single Joycons being used right now?
+static int linearFiltering = 0; // is linear filtering being used right now?
+extern CGameValues game_values;
+#endif
+
 #define GFX_BPP 16
 #define GFX_SCREEN_W 640
 #define GFX_SCREEN_H 480
@@ -194,6 +203,22 @@ void GraphicsSDL::setTitle(const char* title)
 
 void GraphicsSDL::FlipScreen()
 {
+#ifdef __SWITCH__
+    // split/combine joycons depending on user setting in Player Controls menu, and handheld/docked mode
+    update_joycon_mode();
+    // update filtering depending on user choice in Game Options menu
+    if (game_values.filtering != linearFiltering) {
+        // if filtering mode changed, need to destroy and recreate texture
+        if (game_values.filtering) {
+           SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+        } else {
+           SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
+        }
+        SDL_DestroyTexture(sdl2_screen_as_texture);
+        create_screen_tex();
+        linearFiltering = game_values.filtering;
+    }
+#endif
     SDL_UpdateTexture(sdl2_screen_as_texture, NULL, screen->pixels, screen->pitch);
     SDL_RenderClear(sdl2_renderer);
     SDL_RenderCopy(sdl2_renderer, sdl2_screen_as_texture, NULL, NULL);
@@ -243,6 +268,11 @@ void GraphicsSDL::Close()
     SDL_FreeSurface(screen);
     SDL_DestroyRenderer(sdl2_renderer);
     SDL_DestroyWindow(sdl2_window);
+#ifdef __SWITCH__
+    // on quit, recombine any split joycons again
+    game_values.singleJoyconMode = 0;
+    update_joycon_mode();
+#endif
 }
 
 #else
@@ -297,4 +327,58 @@ void GraphicsSDL::Close()
 {
 }
 
+#endif
+
+#ifdef __SWITCH__
+static void update_joycon_mode() {
+	int handheld = hidGetHandheldMode();
+	int coalesceControllers = 0;
+	int splitControllers = 0;
+	if (!handheld) {
+		if (game_values.singleJoyconMode) {
+			if (!singleJoycons) {
+				splitControllers = 1;
+				singleJoycons = 1;
+			}
+		} else if (singleJoycons) {
+			coalesceControllers = 1;
+			singleJoycons = 0;
+		}
+	} else {
+		if (singleJoycons) {
+			coalesceControllers = 1;
+			singleJoycons = 0;
+		}
+	}
+	if (coalesceControllers) {
+		// find all left/right single JoyCon pairs and join them together
+		for (int id = 0; id < 8; id++) {
+			hidSetNpadJoyAssignmentModeDual((HidControllerID) id);
+		}
+		int lastRightId = 8;
+		for (int id0 = 0; id0 < 8; id0++) {
+			if (hidGetControllerType((HidControllerID) id0) & TYPE_JOYCON_LEFT) {
+				for (int id1=lastRightId-1; id1>=0; id1--) {
+					if (hidGetControllerType((HidControllerID) id1) & TYPE_JOYCON_RIGHT) {
+						lastRightId=id1;
+						// prevent missing player numbers
+						if (id0 < id1) {
+							hidMergeSingleJoyAsDualJoy((HidControllerID) id0, (HidControllerID) id1);
+						} else if (id0 > id1) {
+							hidMergeSingleJoyAsDualJoy((HidControllerID) id1, (HidControllerID) id0);
+						}
+						break;
+					}
+				}
+			}
+		}
+	}
+	if (splitControllers) {
+		for (int id=0; id<8; id++) {
+			hidSetNpadJoyAssignmentModeSingleByDefault((HidControllerID) id);
+		}
+		hidSetNpadJoyHoldType(HidJoyHoldType_Horizontal);
+		hidScanInput();
+	}
+}
 #endif
