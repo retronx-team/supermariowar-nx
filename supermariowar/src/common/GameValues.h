@@ -3,6 +3,7 @@
 
 #include "GameModeSettings.h"
 #include "input.h"
+#include "gfx/gfxScreenSettings.h"
 
 #include <vector>
 
@@ -77,7 +78,6 @@ enum awardstyle {
     award_style_souls = 4,
     award_style_text = 5
 };
-
 
 // the real configuration class
 class CGameConfig {
@@ -285,9 +285,10 @@ public:
     short		unlocksecret3part1[4];
     short		unlocksecret3part2[4];
     bool		unlocksecretunlocked[4];
+    gfxScreenFilter screenfilter;
+    gfxScreenSize screensize;
 #ifdef __SWITCH__
     bool        singleJoyconMode;
-    bool        filtering;
 #endif
 };
 

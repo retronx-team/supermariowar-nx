@@ -3,6 +3,7 @@
 #include "FileList.h"
 #include "GameValues.h"
 #include "ResourceManager.h"
+#include "gfx/gfxScreenSettings.h"
 
 extern CResourceManager* rm;
 extern CGameValues game_values;
@@ -52,6 +53,15 @@ UI_GraphicsOptionsMenu::UI_GraphicsOptionsMenu() : UI_Menu()
 #ifdef _XBOX
     miScreenSettingsButton = new MI_Button(&rm->spr_selectfield, 70, 200, "Screen Settings", 500, 0);
     miScreenSettingsButton->SetCode(MENU_CODE_TO_SCREEN_SETTINGS);
+#elif defined(__SWITCH__)
+    miFullscreenField = new MI_SelectField(&rm->spr_selectfield, 70, 200, "Screen Size", 500, 220);
+    miFullscreenField->Add("Aspect Ratio", gfxScreenSize_AspectRatio, "", false, false);
+    miFullscreenField->Add("Stretch", gfxScreenSize_Stretch, "", false, false);
+    miFullscreenField->Add("Integer Scale", gfxScreenSize_IntegerScale, "", false, false);
+    miFullscreenField->Add("1:1", gfxScreenSize_PixelPerfect, "", false, false);
+    miFullscreenField->SetData((short int*)&game_values.screensize, NULL, NULL);
+    miFullscreenField->SetKey(game_values.screensize);
+    miFullscreenField->SetAutoAdvance(true);
 #else
     miFullscreenField = new MI_SelectField(&rm->spr_selectfield, 70, 200, "Screen Size", 500, 220);
     miFullscreenField->Add("Windowed", 0, "", false, false);
@@ -62,21 +72,17 @@ UI_GraphicsOptionsMenu::UI_GraphicsOptionsMenu() : UI_Menu()
     miFullscreenField->SetItemChangedCode(MENU_CODE_TOGGLE_FULLSCREEN);
 #endif //_XBOX
 
-#ifdef __SWITCH__
     miFilteringField = new MI_SelectField(&rm->spr_selectfield, 70, 240, "Graphics Filter", 500, 220);
-    miFilteringField->Add("Point", 0, "", false, false);
-    miFilteringField->Add("Linear", 1, "", true, false);
-    miFilteringField->SetData(NULL, NULL, &game_values.filtering);
-    miFilteringField->SetKey(game_values.filtering ? 1 : 0);
+    miFilteringField->Add("Nearest", gfxScreenFilter_Nearest, "", false, false);
+    miFilteringField->Add("Linear", gfxScreenFilter_Linear, "", false, false);
+    miFilteringField->Add("Best", gfxScreenFilter_Best, "", false, false);
+    miFilteringField->SetData((short int*)&game_values.screenfilter, NULL, NULL);
+    miFilteringField->SetKey(game_values.screenfilter);
     miFilteringField->SetAutoAdvance(true);
+
     miMenuGraphicsPackField = new MI_PacksField(&rm->spr_selectfield, 70, 280, "Menu Graphics", 500, 220, menugraphicspacklist, MENU_CODE_MENU_GRAPHICS_PACK_CHANGED);
     miWorldGraphicsPackField = new MI_PacksField(&rm->spr_selectfield, 70, 320, "World Graphics", 500, 220, worldgraphicspacklist, MENU_CODE_WORLD_GRAPHICS_PACK_CHANGED);
     miGameGraphicsPackField = new MI_PacksField(&rm->spr_selectfield, 70, 360, "Game Graphics", 500, 220, gamegraphicspacklist, MENU_CODE_GAME_GRAPHICS_PACK_CHANGED);
-#else
-    miMenuGraphicsPackField = new MI_PacksField(&rm->spr_selectfield, 70, 240, "Menu Graphics", 500, 220, menugraphicspacklist, MENU_CODE_MENU_GRAPHICS_PACK_CHANGED);
-    miWorldGraphicsPackField = new MI_PacksField(&rm->spr_selectfield, 70, 280, "World Graphics", 500, 220, worldgraphicspacklist, MENU_CODE_WORLD_GRAPHICS_PACK_CHANGED);
-    miGameGraphicsPackField = new MI_PacksField(&rm->spr_selectfield, 70, 320, "Game Graphics", 500, 220, gamegraphicspacklist, MENU_CODE_GAME_GRAPHICS_PACK_CHANGED);
-#endif
 
     miGraphicsOptionsMenuBackButton = new MI_Button(&rm->spr_selectfield, 544, 432, "Back", 80, 1);
     miGraphicsOptionsMenuBackButton->SetCode(MENU_CODE_BACK_TO_OPTIONS_MENU);
@@ -91,15 +97,11 @@ UI_GraphicsOptionsMenu::UI_GraphicsOptionsMenu() : UI_Menu()
     AddControl(miFrameLimiterField, miTopLayerField, miScreenSettingsButton, NULL, miGraphicsOptionsMenuBackButton);
     AddControl(miScreenSettingsButton, miFrameLimiterField, miMenuGraphicsPackField, NULL, miGraphicsOptionsMenuBackButton);
     AddControl(miMenuGraphicsPackField, miScreenSettingsButton, miWorldGraphicsPackField, NULL, miGraphicsOptionsMenuBackButton);
-#elif defined(__SWITCH__)
+#else
     AddControl(miFrameLimiterField, miTopLayerField, miFullscreenField, NULL, miGraphicsOptionsMenuBackButton);
     AddControl(miFullscreenField, miFrameLimiterField, miFilteringField, NULL, miGraphicsOptionsMenuBackButton);
     AddControl(miFilteringField, miFullscreenField, miMenuGraphicsPackField, NULL, miGraphicsOptionsMenuBackButton);
     AddControl(miMenuGraphicsPackField, miFilteringField, miWorldGraphicsPackField, NULL, miGraphicsOptionsMenuBackButton);
-#else
-    AddControl(miFrameLimiterField, miTopLayerField, miFullscreenField, NULL, miGraphicsOptionsMenuBackButton);
-    AddControl(miFullscreenField, miFrameLimiterField, miMenuGraphicsPackField, NULL, miGraphicsOptionsMenuBackButton);
-    AddControl(miMenuGraphicsPackField, miFullscreenField, miWorldGraphicsPackField, NULL, miGraphicsOptionsMenuBackButton);
 #endif
 
     AddControl(miWorldGraphicsPackField, miMenuGraphicsPackField, miGameGraphicsPackField, NULL, miGraphicsOptionsMenuBackButton);

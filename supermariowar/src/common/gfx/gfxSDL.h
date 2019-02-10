@@ -4,6 +4,7 @@
 #include "SDL.h"
 
 #include "gfxPalette.h"
+#include "gfxScreenSettings.h"
 
 class GraphicsSDL
 {

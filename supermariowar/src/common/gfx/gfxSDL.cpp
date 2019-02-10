@@ -10,12 +10,13 @@ extern SDL_Surface* screen;
 
 #ifdef __SWITCH__
 #include <switch.h>
-#include "GameValues.h"
 static void update_joycon_mode(); // call this once per frame to update split/dual joycon mode
-static int singleJoycons = 0; // are single Joycons being used right now?
-static int linearFiltering = 0; // is linear filtering being used right now?
-extern CGameValues game_values;
+static bool singleJoycons = false; // are single Joycons being used right now?
 #endif
+
+#include "GameValues.h"
+static gfxScreenFilter screenfilter = gfxScreenFilter_Nearest;
+extern CGameValues game_values;
 
 #define GFX_BPP 16
 #define GFX_SCREEN_W 640
@@ -162,8 +163,6 @@ void GraphicsSDL::create_game_window(bool fullscreen)
         }
 
         SDL_SetRenderDrawColor(sdl2_renderer, 0, 0, 0, 255);
-        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-        SDL_RenderSetLogicalSize(sdl2_renderer, GFX_SCREEN_W, GFX_SCREEN_H);
     }
 
     void GraphicsSDL::create_screen_surface()
@@ -206,22 +205,66 @@ void GraphicsSDL::FlipScreen()
 #ifdef __SWITCH__
     // split/combine joycons depending on user setting in Player Controls menu, and handheld/docked mode
     update_joycon_mode();
+#endif
     // update filtering depending on user choice in Game Options menu
-    if (game_values.filtering != linearFiltering) {
+    if (game_values.screenfilter != screenfilter) {
         // if filtering mode changed, need to destroy and recreate texture
-        if (game_values.filtering) {
+        if (game_values.screenfilter == gfxScreenFilter_Linear) {
            SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+        } else if(game_values.screenfilter == gfxScreenFilter_Best) {
+           SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best");
         } else {
            SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
+           game_values.screenfilter = gfxScreenFilter_Nearest;
         }
         SDL_DestroyTexture(sdl2_screen_as_texture);
         create_screen_tex();
-        linearFiltering = game_values.filtering;
+        screenfilter = game_values.screenfilter;
     }
-#endif
+
     SDL_UpdateTexture(sdl2_screen_as_texture, NULL, screen->pixels, screen->pitch);
     SDL_RenderClear(sdl2_renderer);
-    SDL_RenderCopy(sdl2_renderer, sdl2_screen_as_texture, NULL, NULL);
+
+    if(GFX_SCREEN_W == GFX_WIN_W && GFX_SCREEN_H == GFX_WIN_H) {
+        SDL_RenderSetLogicalSize(sdl2_renderer, GFX_SCREEN_W, GFX_SCREEN_H);
+        SDL_RenderCopy(sdl2_renderer, sdl2_screen_as_texture, NULL, NULL);
+    } else {
+        SDL_Rect src_rect;
+        SDL_Rect dest_rect;
+
+        src_rect.x = 0;
+        src_rect.y = 0;
+        src_rect.w = GFX_SCREEN_W;
+        src_rect.h = GFX_SCREEN_H;
+
+        int dest_w = 0;
+        int dest_h = 0;
+        float factor_w = (float)(GFX_WIN_W) / (float)(GFX_SCREEN_W);
+        float factor_h = (float)(GFX_WIN_H) / (float)(GFX_SCREEN_H);
+        float factor = factor_w > factor_h ? factor_h : factor_w;
+
+        if (game_values.screensize == gfxScreenSize_PixelPerfect) {
+            dest_w = GFX_WIN_W;
+            dest_h = GFX_WIN_H;
+        } else if(game_values.screensize == gfxScreenSize_Stretch) {
+            dest_w = GFX_WIN_W;
+            dest_h = GFX_WIN_H;
+        } else if(game_values.screensize == gfxScreenSize_IntegerScale) {
+            dest_w = (int)factor * GFX_SCREEN_W;
+            dest_h = (int)factor * GFX_SCREEN_H;
+        } else {
+            dest_w = (int)(factor * (float)GFX_SCREEN_W);
+            dest_h = (int)(factor * (float)GFX_SCREEN_H);
+            game_values.screensize = gfxScreenSize_AspectRatio;
+        }
+
+        dest_rect.x = GFX_WIN_W / 2 - dest_w / 2;
+        dest_rect.y = GFX_WIN_H / 2 - dest_h / 2;
+        dest_rect.w = dest_w;
+        dest_rect.h = dest_h;
+
+        SDL_RenderCopy(sdl2_renderer, sdl2_screen_as_texture, &src_rect, &dest_rect);
+    }
     SDL_RenderPresent(sdl2_renderer);
 }
 
@@ -270,7 +313,7 @@ void GraphicsSDL::Close()
     SDL_DestroyWindow(sdl2_window);
 #ifdef __SWITCH__
     // on quit, recombine any split joycons again
-    game_values.singleJoyconMode = 0;
+    game_values.singleJoyconMode = false;
     update_joycon_mode();
 #endif
 }
@@ -332,22 +375,22 @@ void GraphicsSDL::Close()
 #ifdef __SWITCH__
 static void update_joycon_mode() {
 	int handheld = hidGetHandheldMode();
-	int coalesceControllers = 0;
-	int splitControllers = 0;
+	bool coalesceControllers = false;
+	bool splitControllers = false;
 	if (!handheld) {
 		if (game_values.singleJoyconMode) {
 			if (!singleJoycons) {
-				splitControllers = 1;
-				singleJoycons = 1;
+				splitControllers = true;
+				singleJoycons = true;
 			}
 		} else if (singleJoycons) {
-			coalesceControllers = 1;
-			singleJoycons = 0;
+			coalesceControllers = true;
+			singleJoycons = false;
 		}
 	} else {
 		if (singleJoycons) {
-			coalesceControllers = 1;
-			singleJoycons = 0;
+			coalesceControllers = true;
+			singleJoycons = false;
 		}
 	}
 	if (coalesceControllers) {

@@ -252,9 +252,10 @@ void CGameValues::init()
         playerInput.inputControls[iPlayer] = &inputConfiguration[iPlayer][0];
 #endif
     }
+    screenfilter = gfxScreenFilter_Nearest;
+    screensize = gfxScreenSize_AspectRatio;
 #ifdef __SWITCH__
     singleJoyconMode = false;
-    filtering = false;
 #endif
 }
 
@@ -438,9 +439,10 @@ void CGameValues::ReadBinaryConfig() {
         worldgraphicspacklist->SetCurrent(options.read_u8());
         gamegraphicspacklist->SetCurrent(options.read_u8());
 
+        screensize = (gfxScreenSize)options.read_u8();
+        screenfilter = (gfxScreenFilter)options.read_u8();
 #ifdef __SWITCH__
         singleJoyconMode = options.read_bool();
-        filtering = options.read_bool();
 #endif
 
         sfx_setmusicvolume(musicvolume);
@@ -596,9 +598,10 @@ void CGameValues::WriteConfig()
         options.write_u8(worldgraphicspacklist->GetCurrentIndex());
         options.write_u8(gamegraphicspacklist->GetCurrentIndex());
 
+        options.write_u8(screensize);
+        options.write_u8(screenfilter);
 #ifdef __SWITCH__
         options.write_bool(singleJoyconMode);
-        options.write_bool(filtering);
 #endif
 
     }
