@@ -133,6 +133,10 @@ else()
 	target_link_libraries(smw ${SDL_LIBRARY} ${SDLMIXER_LIBRARY} ${SDLIMAGE_LIBRARY} ${SDLMAIN_LIBRARY})
 endif()
 
+if(PLATFORM_TARGET_LIBS)
+	target_link_libraries(smw ${PLATFORM_TARGET_LIBS})
+endif()
+
 if(NOT NO_NETWORK)
 	target_link_libraries(smw enet)
 	if (WIN32)
