@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/blair1618/yaml-cpp.git
+	branch = master
+	commit = 519d33fea3fbcbe7e1f89f97ee0fa539cec33eb7
+	parent = 63be2e8ebf9698b7be6a9b12ab14c592da2693bc
+	method = merge
+	cmdver = 0.4.0
