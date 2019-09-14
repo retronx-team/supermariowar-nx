@@ -1,0 +1,91 @@
+Discovery notes
+===============
+by neagix
+
+This document is kept as a diary of what I discover in the code during development.
+
+See also old/DevelopmentDiary-till-2004.txt for the original development diary.
+
+2013-04-23
+----------
+
+Modularity is not enforced.
+
+From a comment: Pressing insert in debug mode turns on automated testing
+TODO: Investigate this
+
+2013-04-24
+----------
+
+Most of the fan-made content is lost e.g. mods, packs etc
+I am trying to recover it.
+
+There should be an input playback feature to create sort of unit tests, this way we
+can serialize testing for specific issues, spot regressions but also improve playback
+
+Configuration shall be loaded from ini file, no need to load any existing options.bin
+
+Compatibility to old SMW directory paths shall be preserved at least till 2.0.
+
+numeric indexes in the .txt files shall be replaced by enum constants (like Music Category, etc)
+
+Replacing 'rand() %' with properly uniform distributed function GetRandMax()
+DONE
+
+Adding preliminary support for bigger screen resolutions (might not work e.g. no big enough maps or missing scrolling support)
+
+better sound for eggs game
+
+bomb explosion -> smaller
+
+AI should have a short memory to detect if the approach is not working out, then randomly change it
+
+TODO lists should be unified into a current one
+
+All conversions of pre 1.8 maps shall be supported (on-the-fly) at least till 2.0
+
+Pre 1.9 maps (640x480) will play with a frame when played at higher resolution
+
+Only 800x600 shall be supported as new resolution (for now).
+
+Pre 1.9 maps shall be supported, but converted on-the-fly to human-readable format (only when accessing in directory mode)
+Tiled's TMX is a good candidate
+
+Long term features
+------------------
+* Lua scripting language support
+* Network play (LAN)
+* Tiled support
+
+Data directory structure
+------------------------
+
+As I understand there is 'packs' structure under:
+
+- gfx/packs/
+- music/game/ and music/world/
+- sfx/packs/
+
+These should all be made modular, so that core game graphics are separated (for example level editor graphics)
+while game specific packs made selectable. There could be the following types of packages:
+
+- overlay package, this is a container that contains dependency to 1 gfx package, at least 1 game music package, at least 1 world music package, at least 1 sfx package and at least 1 character package)
+-- gfx package (this is also a 'game skin' thing)
+-- game music package
+-- world music package
+-- sfx package
+-- character package (that replaces current 'skin' PNGs and opens possibility for extension with character properties)
+
+Items with double dashes '--' have in theory dependency with above item. By making packages individual (as per above) we can effectively use overlays in a great way.
+Overlay packages can also have any custom file that overrides existing files. The loading mechanism will not load the underlying file when there is already same file in overlay.
+
+All packages shall be cached locally (in .smw/packagesCache directory for example) and be managed through online server (HTTP/HTTPS)
+Packages shall be cached as .zip, but for development purposes also directories shall be supported
+Packages shall also have version number, always the latest version is used of any package.
+
+Known issues
+------------
+
+SEGFAULT when pressing Insert in debug mode (scripted operations not working)
+There are many weird code smells.
+I did not yet start reading the TODO to check what's missing and what not.
