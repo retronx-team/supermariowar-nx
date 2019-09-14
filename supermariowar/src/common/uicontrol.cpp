@@ -21,7 +21,7 @@ static bool _switchOSKInput(char* header, char* initialValue, char* disallowedCh
         swkbdConfigMakePresetDefault(&kbd);
         swkbdConfigSetHeaderText(&kbd, header);
         //kbd.arg.arg.stringLenMaxExt = maxlen-1;
-        kbd.arg.arg.stringLenMax = maxlen-1;
+        kbd.arg.arg.arg.stringLenMax = maxlen-1;
         if(initialValue) {
             swkbdConfigSetInitialText(&kbd, initialValue);
         }
