@@ -99,6 +99,11 @@ LIST(APPEND SMW_SRCS
 	menu/network/NetServersMenu.cpp
 )
 
+#
+# Platform Specific files
+#
+LIST(APPEND SMW_SRCS platform/switch.c)
+
 if(NOT NO_NETWORK)
 	LIST(APPEND SMW_SRCS platform/network/enet/NetworkLayerENet.cpp)
 endif()
