@@ -47,6 +47,10 @@
 #include "menu/xbox/ScreenSettingsMenu.h"
 #endif
 
+#ifdef __SWITCH__
+#include "platform/switch.h"
+#endif
+
 #include <cstdlib> // atoi()
 #include <cassert>
 #include <sstream>
@@ -658,6 +662,11 @@ void MenuState::update()
             mCurrentMenu = mPlayerControlsMenu;
             mCurrentMenu->ResetMenu();
         }
+#ifdef __SWITCH__
+        else if (MENU_CODE_TO_SWITCH_CONTROLS == code) {
+            platformSwitchShowControllerOptions();
+        }
+#endif
 #ifdef _XBOX
         else if (MENU_CODE_TO_SCREEN_SETTINGS == code) {
             mCurrentMenu = mScreenSettingsMenu;

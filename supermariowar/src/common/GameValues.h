@@ -287,9 +287,6 @@ public:
     bool		unlocksecretunlocked[4];
     gfxScreenFilter screenfilter;
     gfxScreenSize screensize;
-#ifdef __SWITCH__
-    bool        singleJoyconMode;
-#endif
 };
 
 #endif // GAMEVALUES_H

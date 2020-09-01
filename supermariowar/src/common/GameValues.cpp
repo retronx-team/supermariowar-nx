@@ -254,9 +254,6 @@ void CGameValues::init()
     }
     screenfilter = gfxScreenFilter_Nearest;
     screensize = gfxScreenSize_AspectRatio;
-#ifdef __SWITCH__
-    singleJoyconMode = false;
-#endif
 }
 
 void CGameValues::resetGameplaySettings()
@@ -441,9 +438,6 @@ void CGameValues::ReadBinaryConfig() {
 
         screensize = (gfxScreenSize)options.read_u8();
         screenfilter = (gfxScreenFilter)options.read_u8();
-#ifdef __SWITCH__
-        singleJoyconMode = options.read_bool();
-#endif
 
         sfx_setmusicvolume(musicvolume);
         sfx_setsoundvolume(soundvolume);
@@ -600,9 +594,6 @@ void CGameValues::WriteConfig()
 
         options.write_u8(screensize);
         options.write_u8(screenfilter);
-#ifdef __SWITCH__
-        options.write_bool(singleJoyconMode);
-#endif
 
     }
     catch (std::exception const& error)

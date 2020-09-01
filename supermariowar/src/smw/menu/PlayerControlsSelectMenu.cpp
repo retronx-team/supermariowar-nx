@@ -1,10 +1,5 @@
 #include "PlayerControlsSelectMenu.h"
 
-#ifdef __SWITCH__
-#include "GameValues.h"
-#include "ui/MI_SelectField.h"
-extern CGameValues game_values;
-#endif
 #include "ResourceManager.h"
 
 extern CResourceManager* rm;
@@ -24,11 +19,8 @@ UI_PlayerControlsSelectMenu::UI_PlayerControlsSelectMenu() : UI_Menu()
     miPlayer4ControlsButton->SetCode(MENU_CODE_TO_PLAYER_4_CONTROLS);
 
 #ifdef __SWITCH__
-    miPlayerControlsSingleJoyconModeField = new MI_SelectField(&rm->spr_selectfield, 120, 300, "Split Joycons", 400, 180);
-    miPlayerControlsSingleJoyconModeField->Add("Off", 0, "", false, false);
-    miPlayerControlsSingleJoyconModeField->Add("On", 1, "", true, false);
-    miPlayerControlsSingleJoyconModeField->SetData(NULL, NULL, &game_values.singleJoyconMode);
-    miPlayerControlsSingleJoyconModeField->SetKey(game_values.singleJoyconMode ? 1 : 0);
+    miPlayerSwitchControlsButton = new MI_Button(&rm->spr_selectfield, 120, 320, "[Switch] Adjust pairing / controllers", 400, 1);
+    miPlayerSwitchControlsButton->SetCode(MENU_CODE_TO_SWITCH_CONTROLS);
 #endif
 
     miPlayerControlsBackButton = new MI_Button(&rm->spr_selectfield, 544, 432, "Back", 80, 1);
@@ -42,12 +34,12 @@ UI_PlayerControlsSelectMenu::UI_PlayerControlsSelectMenu() : UI_Menu()
     AddControl(miPlayer2ControlsButton, miPlayer1ControlsButton, miPlayer3ControlsButton, NULL, miPlayerControlsBackButton);
     AddControl(miPlayer3ControlsButton, miPlayer2ControlsButton, miPlayer4ControlsButton, NULL, miPlayerControlsBackButton);
 #ifdef __SWITCH__
-    AddControl(miPlayer4ControlsButton, miPlayer3ControlsButton, miPlayerControlsSingleJoyconModeField, NULL, miPlayerControlsBackButton);
-    AddControl(miPlayerControlsSingleJoyconModeField, miPlayer4ControlsButton, miPlayerControlsBackButton, NULL, miPlayerControlsBackButton);
-    AddControl(miPlayerControlsBackButton, miPlayerControlsSingleJoyconModeField, miPlayer1ControlsButton, miPlayer1ControlsButton, NULL);
+    AddControl(miPlayer4ControlsButton, miPlayer3ControlsButton, miPlayerSwitchControlsButton, NULL, miPlayerControlsBackButton);
+    AddControl(miPlayerSwitchControlsButton, miPlayer4ControlsButton, miPlayerControlsBackButton, NULL, miPlayerControlsBackButton);
+    AddControl(miPlayerControlsBackButton, miPlayerSwitchControlsButton, miPlayer1ControlsButton, miPlayer1ControlsButton, NULL);
 #else
-    AddControl(miPlayer4ControlsButton, miPlayer3ControlsButton, miPlayerControlsBackButton, NULL, miPlayerControlsBackButton);
-    AddControl(miPlayerControlsBackButton, miPlayer4ControlsButton, miPlayer1ControlsButton, miPlayer1ControlsButton, NULL);
+     AddControl(miPlayer4ControlsButton, miPlayer3ControlsButton, miPlayerControlsBackButton, NULL, miPlayerControlsBackButton);
+     AddControl(miPlayerControlsBackButton, miPlayer4ControlsButton, miPlayer1ControlsButton, miPlayer1ControlsButton, NULL);
 #endif
 
     AddNonControl(miPlayerControlsLeftHeaderBar);
