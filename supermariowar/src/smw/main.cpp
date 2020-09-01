@@ -55,9 +55,11 @@
 
 #ifdef __SWITCH__
 extern "C" {
+#include <switch/services/applet.h>
+#include <switch/services/ssl.h>
+
 #include <switch/runtime/devices/socket.h>
 #include <switch/runtime/nxlink.h>
-#include <switch/services/applet.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -70,7 +72,7 @@ void userAppInit() {
         stdioRes = nxlinkStdio();
     }
 
-    if(stdioRes != 0) {
+    if(stdioRes == -1) {
         g_logfile = fopen("smw.log", "w");
         if(g_logfile != NULL) {
             fflush(stdout);
