@@ -30,6 +30,7 @@
 #include "ResourceManager.h"
 #include "sfx.h"
 #include "TilesetManager.h"
+#include "GameValues.h"
 
 // Included only for movingplatform
 // TODO: Remove and fix linker errors
@@ -90,6 +91,8 @@ extern short g_iCurrentPowerupPresets[NUM_POWERUP_PRESETS][NUM_POWERUPS];
 
 extern CResourceManager* rm;
 extern std::string RootDataDirectory;
+
+extern CGameValues game_values;
 
 enum {EDITOR_EDIT, EDITOR_TILES, EDITOR_QUIT, SAVE_AS, FIND, CLEAR_MAP, EDITOR_BLOCKS, NEW_MAP, SAVE, EDITOR_WARP, EDITOR_EYECANDY, DISPLAY_HELP, EDITOR_PLATFORM, EDITOR_TILETYPE, EDITOR_BACKGROUNDS, EDITOR_MAPITEMS, EDITOR_ANIMATION, EDITOR_PROPERTIES, EDITOR_MODEITEMS, EDITOR_MAPHAZARDS};
 
@@ -161,6 +164,17 @@ int				copiedlayer;
 short			x_shake = 0;
 short			y_shake = 0;
 
+int				mouse_x, mouse_y;
+
+void update_mouse_coords() {
+	mouse_x = event.motion.x;
+	mouse_y = event.motion.y;
+	if (mouse_x < 0) mouse_x = 0;
+	if (mouse_y < 0) mouse_y = 0;
+	if (mouse_x > 640 - 1) mouse_x = 640 - 1;
+	if (mouse_y > 480 - 1) mouse_y = 480 - 1;
+}
+
 CEyecandyContainer eyecandy[3];
 CGameMode		*gamemodes[GAMEMODE_LAST];
 CPlayer			*list_players[4];
@@ -201,7 +215,11 @@ class MapPlatform
     void UpdatePreview() {
         if (!preview) {
 				preview = SDL_CreateRGBSurface(screen->flags, 160, 120, screen->format->BitsPerPixel, 0, 0, 0, 0);
+#ifdef USE_SDL2
+				SDL_SetColorKey(preview, SDL_TRUE, SDL_MapRGB(preview->format, 255, 0, 255));
+#else
 				SDL_SetColorKey(preview, SDL_SRCCOLORKEY, SDL_MapRGB(preview->format, 255, 0, 255));
+#endif
 			}
 
 			SDL_FillRect(preview, NULL, SDL_MapRGB(preview->format, 255, 0, 255));
@@ -249,6 +267,15 @@ TileType * animatedtiletypes;
 bool ReadAnimatedTileTypeFile(const char * szFile);
 bool WriteAnimatedTileTypeFile(const char * szFile);
 
+#if defined(USE_SDL2) || defined(__EMSCRIPTEN__)
+bool CheckKey(const Uint8 * keystate, SDL_Keycode key) {
+	return keystate[SDL_GetScancodeFromKey(key)];
+}
+#else
+bool CheckKey(Uint8 * keystate, SDLKey key) {
+	return keystate[key];
+}
+#endif
 
 SDL_Surface * s_platform;
 SDL_Surface * s_platformpathbuttons;
@@ -384,7 +411,8 @@ int main(int argc, char *argv[])
 	printf("\n---------------- startup ----------------\n");
 
     {
-        BinaryFile editor_settings("leveleditor.bin", "rb");
+        const std::string options_path(GetHomeDirectory() + "leveleditor.bin");
+        BinaryFile editor_settings(options_path.c_str(), "rb");
         if (editor_settings.is_open()) {
             g_fFullScreen = editor_settings.read_bool();
             editor_settings.read_string_long(findstring, FILEBUFSIZE);
@@ -397,8 +425,7 @@ int main(int argc, char *argv[])
 
 	//Add all of the maps that are world only so we can edit them
 	maplist->addWorldMaps();
-
-	SDL_WM_SetCaption(MAPTITLESTRING, "leveleditor.ico");
+	gfx_settitle(MAPTITLESTRING);
 
 	printf("\n---------------- loading graphics ----------------\n");
 
@@ -482,7 +509,19 @@ int main(int argc, char *argv[])
 		rm->spr_hazard_flame[i].SetWrap(true, 640 >> i);
 		rm->spr_hazard_pirhanaplant[i].SetWrap(true, 640 >> i);
 	}
+#ifdef USE_SDL2
+    if ( SDL_SetColorKey(s_platform, SDL_TRUE, SDL_MapRGB(s_platform->format, 255, 0, 255)) < 0) {
+		printf("\n ERROR: Couldn't set ColorKey + RLE: %s\n", SDL_GetError());
+	}
 
+    if ( SDL_SetColorKey(s_platformpathbuttons, SDL_TRUE, SDL_MapRGB(s_platformpathbuttons->format, 255, 0, 255)) < 0) {
+		printf("\n ERROR: Couldn't set ColorKey + RLE: %s\n", SDL_GetError());
+	}
+
+    if ( SDL_SetColorKey(s_maphazardbuttons, SDL_TRUE, SDL_MapRGB(s_maphazardbuttons->format, 255, 0, 255)) < 0) {
+		printf("\n ERROR: Couldn't set ColorKey + RLE: %s\n", SDL_GetError());
+	}
+#else
     if ( SDL_SetColorKey(s_platform, SDL_SRCCOLORKEY, SDL_MapRGB(s_platform->format, 255, 0, 255)) < 0) {
 		printf("\n ERROR: Couldn't set ColorKey + RLE: %s\n", SDL_GetError());
 	}
@@ -494,6 +533,7 @@ int main(int argc, char *argv[])
     if ( SDL_SetColorKey(s_maphazardbuttons, SDL_SRCCOLORKEY, SDL_MapRGB(s_maphazardbuttons->format, 255, 0, 255)) < 0) {
 		printf("\n ERROR: Couldn't set ColorKey + RLE: %s\n", SDL_GetError());
 	}
+#endif
 
 	rm->menu_font_small.init(convertPath("gfx/packs/Classic/fonts/font_small.png"));
 	rm->menu_font_large.init(convertPath("gfx/packs/Classic/fonts/font_large.png"));
@@ -532,6 +572,8 @@ int main(int argc, char *argv[])
 	printf("\n---------------- ready, steady, go! ----------------\n");
 
 	resetselectedtiles();
+
+	game_values.init(); // Needed for FPSLimiter
 
 	printf("entering level editor loop...\n");
 #ifdef __EMSCRIPTEN__
@@ -643,7 +685,8 @@ void gameloop_frame()
 
 	save_map(convertPath("maps/ZZleveleditor.map"));
 
-    BinaryFile editor_settings("leveleditor.bin", "wb");
+    const std::string options_path(GetHomeDirectory() + "leveleditor.bin");
+    BinaryFile editor_settings(options_path.c_str(), "wb");
     if (editor_settings.is_open()) {
         editor_settings.write_bool(g_fFullScreen);
         editor_settings.write_string_long(maplist->currentFilename());
@@ -802,7 +845,11 @@ int editor_edit()
 
                 switch (event.type) {
                     case SDL_KEYDOWN: {
+#ifdef USE_SDL2
+                        SDL_Keycode key = event.key.keysym.sym;
+#else
                         SDLKey key = event.key.keysym.sym;
+#endif
 
                         if (key == SDLK_LEFT) {
                             fSelectedYes = true;
@@ -836,7 +883,11 @@ int editor_edit()
 					return EDITOR_QUIT;
 
                 case SDL_KEYDOWN: {
-						SDLKey key = event.key.keysym.sym;
+#ifdef USE_SDL2
+                    SDL_Keycode key = event.key.keysym.sym;
+#else
+                    SDLKey key = event.key.keysym.sym;
+#endif
 
                     if (key == SDLK_ESCAPE) {
 							if (g_musiccategorydisplaytimer > 0)
@@ -910,9 +961,8 @@ int editor_edit()
 
                     if (key == SDLK_k) {
 							int iMouseX, iMouseY;
-							SDL_GetMouseState(&iMouseX, &iMouseY);
-							iMouseX >>= 5;
-							iMouseY >>= 5;
+							iMouseX = mouse_x / TILESIZE;
+							iMouseY = mouse_y / TILESIZE;
 
 							short iType = g_map->objectdata[iMouseX][iMouseY].iType;
                         if (iType == 1 || iType == 15 || iType == 4 || iType == 5 || iType == 17 || iType == 18 || iType == 3) {
@@ -929,10 +979,10 @@ int editor_edit()
                     if (key == SDLK_g) {
                         backgroundlist->next();
 
-                        rm->spr_background.init(convertPath(backgroundlist->current_name()));
+                        rm->spr_background.init(backgroundlist->current_name());
                         strcpy(g_map->szBackgroundFile, getFileFromPath(backgroundlist->current_name()).c_str());
 
-                        if (!keystate[SDLK_LSHIFT] && !keystate[SDLK_RSHIFT]) {
+                        if (!CheckKey(keystate, SDLK_LSHIFT) && !CheckKey(keystate, SDLK_RSHIFT)) {
 								//Set music to background default
                             for (short iCategory = 0; iCategory < MAXMUSICCATEGORY; iCategory++) {
                                 if (!strncmp(g_szMusicCategoryNames[iCategory], g_map->szBackgroundFile, strlen(g_szMusicCategoryNames[iCategory]))) {
@@ -951,20 +1001,20 @@ int editor_edit()
 						}
 
                     if (key == SDLK_s ) {
-							if (keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT])
+							if (CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT))
 								return SAVE_AS;
 
 							return SAVE;
 						}
 
                     if (key == SDLK_f ) {
-							if (keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT] || findstring[0] == '\0')
+							if (CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT) || findstring[0] == '\0')
 								return FIND;
 
 							findcurrentstring();
 						}
 
-                    if (key == SDLK_DELETE && (keystate[SDLK_LCTRL] || keystate[SDLK_RCTRL])) {
+                    if (key == SDLK_DELETE && (CheckKey(keystate, SDLK_LCTRL) || CheckKey(keystate, SDLK_RCTRL))) {
 							return CLEAR_MAP;
 						}
 
@@ -1201,7 +1251,7 @@ int editor_edit()
 											clearselectedmaptiles();
 										}
                                 } else {
-										if (!keystate[SDLK_LSHIFT] && !keystate[SDLK_RSHIFT] && !keystate[SDLK_LCTRL])
+										if (!CheckKey(keystate, SDLK_LSHIFT) && !CheckKey(keystate, SDLK_RSHIFT) && !CheckKey(keystate, SDLK_LCTRL))
 											resetselectedtiles();
 
                                     if (move_nodrag) {
@@ -1304,6 +1354,7 @@ int editor_edit()
 					}
 
                 case SDL_MOUSEMOTION: {
+						update_mouse_coords();
 						short iClickX = event.button.x / TILESIZE;
 						short iClickY = event.button.y / TILESIZE;
 
@@ -1438,15 +1489,11 @@ int editor_edit()
 			}
 
             if (move_mode == 1 || move_mode == 3) {
-				int mousex, mousey;
-				SDL_GetMouseState(&mousex, &mousey);
-				move_offset_x = (mousex / TILESIZE) - move_start_x;
-				move_offset_y = (mousey / TILESIZE) - move_start_y;
+				move_offset_x = (mouse_x / TILESIZE) - move_start_x;
+				move_offset_y = (mouse_y / TILESIZE) - move_start_y;
             } else if (move_mode == 2) {
-				int mousex, mousey;
-				SDL_GetMouseState(&mousex, &mousey);
-				move_drag_offset_x = (mousex / TILESIZE);
-				move_drag_offset_y = (mousey / TILESIZE);
+				move_drag_offset_x = (mouse_x / TILESIZE);
+				move_drag_offset_y = (mouse_y / TILESIZE);
 			}
 
 		}
@@ -1917,6 +1964,11 @@ int editor_eyecandy()
 					break;
 				}
 
+			case SDL_MOUSEMOTION: {
+				update_mouse_coords();
+				break;
+				}
+
 				default:
 					break;
 			}
@@ -1926,15 +1978,12 @@ int editor_eyecandy()
 		drawmap(false, TILESIZE);
 		rm->menu_shade.draw(0, 0);
 
-		int iMouseX, iMouseY;
-		SDL_GetMouseState(&iMouseX, &iMouseY);
-
 		short ix = 165;
         for (short iLayer = 0; iLayer < 3; iLayer++) {
             for (short k = 0; k < NUM_EYECANDY; k++) {
 				short iy = k * 65 + 20;
 
-				if (iMouseX >= ix && iMouseX < ix + 90 && iMouseY >= iy && iMouseY < iy + 52)
+				if (mouse_x >= ix && mouse_x < ix + 90 && mouse_y >= iy && mouse_y < iy + 52)
 					rm->spr_powerupselector.draw(ix, iy, 0, 0, 90, 52);
 				else
 					rm->spr_powerupselector.draw(ix, iy, 0, 52, 90, 52);
@@ -1996,7 +2045,9 @@ void init_editor_properties(short iBlockCol, short iBlockRow)
 int editor_properties(short iBlockCol, short iBlockRow)
 {
     init_editor_properties(iBlockCol, iBlockRow);
-
+	while (true)
+	{
+		FPSLimiter::instance().frameStart();
 		//handle messages
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
@@ -2008,11 +2059,8 @@ int editor_properties(short iBlockCol, short iBlockRow)
                     editor_properties_initialized = false;
 					return EDITOR_EDIT;
                 } else if ((iBlockType == 1 || iBlockType == 15) && ((event.key.keysym.sym >= SDLK_0 && event.key.keysym.sym <= SDLK_9) || event.key.keysym.sym == SDLK_BACKQUOTE || event.key.keysym.sym == SDLK_d)) {
-						int iMouseX, iMouseY;
-						SDL_GetMouseState(&iMouseX, &iMouseY);
-
 						short iSettingIndex = 0;
-						short * piSetting = GetBlockProperty(iMouseX, iMouseY, iBlockCol, iBlockRow, &iSettingIndex);
+						short * piSetting = GetBlockProperty(mouse_x, mouse_y, iBlockCol, iBlockRow, &iSettingIndex);
 
 						//If shift is held, set all powerups to this setting
 						short iValue = event.key.keysym.sym - SDLK_0;
@@ -2029,7 +2077,7 @@ int editor_properties(short iBlockCol, short iBlockRow)
                     #else
                         Uint8 * keystate = SDL_GetKeyState(NULL);
                     #endif
-                    if (keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT]) {
+                    if (CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT)) {
                         for (short iSetting = 0; iSetting < NUM_BLOCK_SETTINGS; iSetting++) {
 								if (event.key.keysym.sym == SDLK_d)
 									iValue = g_iDefaultPowerupPresets[0][iSetting];
@@ -2049,8 +2097,7 @@ int editor_properties(short iBlockCol, short iBlockRow)
 						short * piSetting = GetBlockProperty(event.button.x, event.button.y, iBlockCol, iBlockRow, &iSettingIndex);
 
                     if (piSetting) {
-							int iMouseX, iMouseY;
-							Uint8 iMouseState = SDL_GetMouseState(&iMouseX, &iMouseY);
+							Uint8 iMouseState = SDL_GetMouseState(NULL, NULL);
 
 							if ((event.button.button == SDL_BUTTON_RIGHT && (iMouseState & SDL_BUTTON_LMASK)) ||
                                 (event.button.button == SDL_BUTTON_LEFT && (iMouseState & SDL_BUTTON_RMASK))) {
@@ -2090,6 +2137,11 @@ int editor_properties(short iBlockCol, short iBlockRow)
 					break;
 				}
 
+			case SDL_MOUSEMOTION: {
+				update_mouse_coords();
+				break;
+				}
+
 				default:
 					break;
 			}
@@ -2098,9 +2150,6 @@ int editor_properties(short iBlockCol, short iBlockRow)
 
 		drawmap(false, TILESIZE);
 		rm->menu_shade.draw(0, 0);
-
-		int iMouseX, iMouseY;
-		SDL_GetMouseState(&iMouseX, &iMouseY);
 
 		short iHiddenCheckboxY = 0;
 
@@ -2111,7 +2160,7 @@ int editor_properties(short iBlockCol, short iBlockRow)
 				short ix = (iSetting % 6) * 100 + 35;
 				short iy = (iSetting / 6) * 62 + 65;
 
-				if (iMouseX >= ix - 10 && iMouseX < ix + 80 && iMouseY >= iy - 10 && iMouseY < iy + 42 && !fUseGame)
+				if (mouse_x >= ix - 10 && mouse_x < ix + 80 && mouse_y >= iy - 10 && mouse_y < iy + 42 && !fUseGame)
 					rm->spr_powerupselector.draw(ix - 10, iy - 10, 0, 0, 90, 52);
 				else
 					rm->spr_powerupselector.draw(ix - 10, iy - 10, 0, 52, 90, 52);
@@ -2137,7 +2186,7 @@ int editor_properties(short iBlockCol, short iBlockRow)
 			iHiddenCheckboxY = 214;
 		}
 
-		if (iMouseX >= 270 && iMouseX < 370 && iMouseY >= iHiddenCheckboxY && iMouseY < iHiddenCheckboxY + 52)
+		if (mouse_x >= 270 && mouse_x < 370 && mouse_y >= iHiddenCheckboxY && mouse_y < iHiddenCheckboxY + 52)
 			rm->spr_powerupselector.draw(270, iHiddenCheckboxY, 90, 0, 100, 52);
 		else
 			rm->spr_powerupselector.draw(270, iHiddenCheckboxY, 90, 52, 100, 52);
@@ -2149,7 +2198,7 @@ int editor_properties(short iBlockCol, short iBlockRow)
 
 		//Display "Use Game" option
         if (iBlockType == 1 || iBlockType == 15) {
-			if (iMouseX >= 390 && iMouseX < 490 && iMouseY >= iHiddenCheckboxY && iMouseY < iHiddenCheckboxY + 52)
+			if (mouse_x >= 390 && mouse_x < 490 && mouse_y >= iHiddenCheckboxY && mouse_y < iHiddenCheckboxY + 52)
 				rm->spr_powerupselector.draw(390, iHiddenCheckboxY, 90, 0, 100, 52);
 			else
 				rm->spr_powerupselector.draw(390, iHiddenCheckboxY, 90, 52, 100, 52);
@@ -2164,7 +2213,10 @@ int editor_properties(short iBlockCol, short iBlockRow)
 		rm->menu_font_small.drawRightJustified(640, 0, maplist->currentFilename());
 
 		DrawMessage();
-		return EDITOR_PROPERTIES;
+		FPSLimiter::instance().beforeFlip();
+		gfx_flipscreen();
+		FPSLimiter::instance().afterFlip();
+	}
 }
 
 //SDL_Rect r;
@@ -2282,19 +2334,37 @@ int editor_platforms()
 						}
                 } else if (event.key.keysym.sym == SDLK_t) {
                     if (PLATFORM_EDIT_STATE_EDIT == iPlatformEditState || PLATFORM_EDIT_STATE_ANIMATED == iPlatformEditState || PLATFORM_EDIT_STATE_TILETYPE == iPlatformEditState) {
-							editor_tiles();
+							FPSLimiter::instance().frameStart();
+							while (editor_tiles() == EDITOR_TILES) {
+								FPSLimiter::instance().beforeFlip();
+								gfx_flipscreen();
+								FPSLimiter::instance().afterFlip();
+								FPSLimiter::instance().frameStart();
+							}
 							iPlatformEditState = PLATFORM_EDIT_STATE_EDIT;
                     } else if (PLATFORM_EDIT_STATE_PATH == iPlatformEditState) {
 							iPlatformEditState = PLATFORM_EDIT_STATE_CHANGE_PATH_TYPE;
 						}
                 } else if (event.key.keysym.sym == SDLK_a) {
                     if (PLATFORM_EDIT_STATE_EDIT == iPlatformEditState || PLATFORM_EDIT_STATE_ANIMATED == iPlatformEditState || PLATFORM_EDIT_STATE_TILETYPE == iPlatformEditState) {
-							editor_animation();
+							FPSLimiter::instance().frameStart();
+							while (editor_animation() == EDITOR_ANIMATION) {
+								FPSLimiter::instance().beforeFlip();
+								gfx_flipscreen();
+								FPSLimiter::instance().afterFlip();
+								FPSLimiter::instance().frameStart();
+							}
 							iPlatformEditState = PLATFORM_EDIT_STATE_ANIMATED;
 						}
                 } else if (event.key.keysym.sym == SDLK_l) {
                     if (PLATFORM_EDIT_STATE_EDIT == iPlatformEditState || PLATFORM_EDIT_STATE_ANIMATED == iPlatformEditState || PLATFORM_EDIT_STATE_TILETYPE == iPlatformEditState) {
-							editor_tiletype();
+							FPSLimiter::instance().frameStart();
+							while (editor_tiletype() == EDITOR_TILETYPE) {
+								FPSLimiter::instance().beforeFlip();
+								gfx_flipscreen();
+								FPSLimiter::instance().afterFlip();
+								FPSLimiter::instance().frameStart();
+							}
 							iPlatformEditState = PLATFORM_EDIT_STATE_TILETYPE;
 						}
                 } else if (event.key.keysym.sym == SDLK_y) { //Change the draw layer
@@ -2345,6 +2415,11 @@ int editor_platforms()
 							iPlatformPreview = -1;
 							g_Platforms[iEditPlatform].UpdatePreview();
 							iPlatformEditState = PLATFORM_EDIT_STATE_SELECT;
+							//Fix menu offset
+							r.x = 192;
+							r.y = 128;
+							r.w = 256;
+							r.h = 224;
                     } else if (PLATFORM_EDIT_STATE_PATH == iPlatformEditState || PLATFORM_EDIT_STATE_TILETYPE == iPlatformEditState) {
 							iPlatformEditState = PLATFORM_EDIT_STATE_EDIT;
 						}
@@ -2486,10 +2561,10 @@ int editor_platforms()
                     #else
                         Uint8 * keystate = SDL_GetKeyState(NULL);
                     #endif
-                        if (g_Platforms[iEditPlatform].iPathType == 2 && (keystate[SDLK_z] || keystate[SDLK_x] || keystate[SDLK_c])) {
-								UpdatePlatformPathRadius(iEditPlatform, event.button.x, event.button.y, keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT], keystate[SDLK_z] != 0, keystate[SDLK_c] != 0);
+                        if (g_Platforms[iEditPlatform].iPathType == 2 && (CheckKey(keystate, SDLK_z) || CheckKey(keystate, SDLK_x) || CheckKey(keystate, SDLK_c))) {
+								UpdatePlatformPathRadius(iEditPlatform, event.button.x, event.button.y, CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT), CheckKey(keystate, SDLK_z) != 0, CheckKey(keystate, SDLK_c) != 0);
                         } else {
-								UpdatePlatformPathStart(iEditPlatform, event.button.x, event.button.y, keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT]);
+								UpdatePlatformPathStart(iEditPlatform, event.button.x, event.button.y, CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT));
 							}
 						}
 
@@ -2510,14 +2585,15 @@ int editor_platforms()
                         Uint8 * keystate = SDL_GetKeyState(NULL);
                     #endif
                         if (g_Platforms[iEditPlatform].iPathType == 0) {
-								UpdatePlatformPathEnd(iEditPlatform, event.button.x, event.button.y, keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT]);
+								UpdatePlatformPathEnd(iEditPlatform, event.button.x, event.button.y, CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT));
                         } else if (g_Platforms[iEditPlatform].iPathType == 1 || g_Platforms[iEditPlatform].iPathType == 2) {
-								UpdatePlatformPathAngle(iEditPlatform, event.button.x, event.button.y, keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT]);
+								UpdatePlatformPathAngle(iEditPlatform, event.button.x, event.button.y, CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT));
 							}
 						}
 					}
 				}
             case SDL_MOUSEMOTION: {
+					update_mouse_coords();
 					short ix = event.button.x / TILESIZE;
 					short iy = event.button.y / TILESIZE;
 
@@ -2554,10 +2630,10 @@ int editor_platforms()
                     #else
                         Uint8 * keystate = SDL_GetKeyState(NULL);
                     #endif
-                        if (g_Platforms[iEditPlatform].iPathType == 2 && (keystate[SDLK_z] || keystate[SDLK_x] || keystate[SDLK_c])) {
-								UpdatePlatformPathRadius(iEditPlatform, event.button.x, event.button.y, keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT], keystate[SDLK_z] != 0, keystate[SDLK_c] != 0);
+                        if (g_Platforms[iEditPlatform].iPathType == 2 && (CheckKey(keystate, SDLK_z) || CheckKey(keystate, SDLK_x) || CheckKey(keystate, SDLK_c))) {
+								UpdatePlatformPathRadius(iEditPlatform, event.button.x, event.button.y, CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT), CheckKey(keystate, SDLK_z) != 0, CheckKey(keystate, SDLK_c) != 0);
                         } else {
-								UpdatePlatformPathStart(iEditPlatform, event.button.x, event.button.y, keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT]);
+								UpdatePlatformPathStart(iEditPlatform, event.button.x, event.button.y, CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT));
 							}
                     } else if (event.motion.state == SDL_BUTTON(SDL_BUTTON_RIGHT)) {
                     #if defined(USE_SDL2) || defined(__EMSCRIPTEN__)
@@ -2566,9 +2642,9 @@ int editor_platforms()
                         Uint8 * keystate = SDL_GetKeyState(NULL);
                     #endif
                         if (g_Platforms[iEditPlatform].iPathType == 0) {
-								UpdatePlatformPathEnd(iEditPlatform, event.button.x, event.button.y, keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT]);
+								UpdatePlatformPathEnd(iEditPlatform, event.button.x, event.button.y, CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT));
                         } else if (g_Platforms[iEditPlatform].iPathType == 1 || g_Platforms[iEditPlatform].iPathType == 2) {
-								UpdatePlatformPathAngle(iEditPlatform, event.button.x, event.button.y, keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT]);
+								UpdatePlatformPathAngle(iEditPlatform, event.button.x, event.button.y, CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT));
 							}
 						}
 					}
@@ -3163,6 +3239,7 @@ int editor_maphazards()
 					}
 				}
             case SDL_MOUSEMOTION: {
+					update_mouse_coords();
 					short iClickX = event.button.x;
 					short iClickY = event.button.y;
 
@@ -3337,7 +3414,7 @@ void AdjustMapHazardRadius(MapHazard * hazard, short iClickX, short iClickY)
     #else
         Uint8 * keystate = SDL_GetKeyState(NULL);
     #endif
-    if (keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT]) {
+    if (CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT)) {
 		float dSector = TWO_PI / 16;
 		angle += TWO_PI / 32;
 
@@ -3364,7 +3441,7 @@ void AdjustMapHazardRadius(MapHazard * hazard, short iClickX, short iClickY)
 		hazard->dparam[1] = angle;
 
         if (radius > 32.0f) {
-            if (keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT]) {
+            if (CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT)) {
 				//Snap radius to every 16 pixels
 				hazard->dparam[2] = (float)(((int)(radius - 16.0f) >> 4) << 4);
             } else {
@@ -3521,6 +3598,7 @@ int editor_tiles()
 				}
 
             case SDL_MOUSEMOTION: {
+					update_mouse_coords();
 					short iCol = event.button.x / TILESIZE + view_tileset_x;
 					short iRow = event.button.y / TILESIZE + view_tileset_y;
 
@@ -3863,13 +3941,14 @@ int editor_modeitems()
 				}
 
             case SDL_MOUSEMOTION: {
+                update_mouse_coords();
                 if (dragmodeitem >= 0 && event.motion.state == SDL_BUTTON(SDL_BUTTON_LEFT)) {
                         #if defined(USE_SDL2) || defined(__EMSCRIPTEN__)
                             const Uint8 * keystate = SDL_GetKeyboardState(NULL);
                         #else
                             Uint8 * keystate = SDL_GetKeyState(NULL);
                         #endif
-						bool fShiftDown = keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT];
+						bool fShiftDown = CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT);
 
                     if (modeitemmode == 0) {
 							g_map->racegoallocations[dragmodeitem].x = event.motion.x - dragoffsetx;
@@ -4062,7 +4141,7 @@ int editor_backgrounds()
                             {
                                 backgroundlist->SetCurrent(iPage * 16 + iBackground);
 
-                                rm->spr_background.init(convertPath(backgroundlist->current_name()));
+                                rm->spr_background.init(backgroundlist->current_name());
                                 strcpy(g_map->szBackgroundFile, getFileFromPath(backgroundlist->current_name()).c_str());
 
                                 if (event.button.button == SDL_BUTTON_LEFT) {
@@ -4085,6 +4164,10 @@ int editor_backgrounds()
 					}
 				break;
 
+				case SDL_MOUSEMOTION:
+					update_mouse_coords();
+				break;
+
 				default:
 					break;
 			}
@@ -4103,11 +4186,7 @@ int editor_backgrounds()
 		rm->menu_font_small.draw(0,480-rm->menu_font_small.getHeight() * 2, "[Page Up] next page, [Page Down] previous page");
 		rm->menu_font_small.draw(0,480-rm->menu_font_small.getHeight(), "[LMB] choose background with music category, [RMB] choose just background");
 
-		int x, y;
-
-		SDL_GetMouseState(&x, &y);
-
-		int iID = x / 160 + y / 120 * 4 + iPage * 16;
+		int iID = mouse_x / 160 + mouse_y / 120 * 4 + iPage * 16;
 
         if (iID < backgroundlist->GetCount())
             rm->menu_font_small.draw(0, 0, backgroundlist->GetIndex(iID));
@@ -4216,6 +4295,7 @@ int editor_animation()
 				}
 
             case SDL_MOUSEMOTION: {
+                update_mouse_coords();
                 if (fInValidTile) {
                     if (event.motion.state == SDL_BUTTON(SDL_BUTTON_LEFT)) {
 							if (iCol < set_tile_start_x)
@@ -4303,7 +4383,11 @@ void LoadBackgroundPage(SDL_Surface ** sBackgrounds, short iPage)
 
 		SDL_Surface * temp = IMG_Load(szFileName);
 
+#ifdef USE_SDL2
+		SDL_Surface * sBackground = SDL_ConvertSurfaceFormat(temp, SDL_PIXELFORMAT_ARGB8888, 0);
+#else
 		SDL_Surface * sBackground = SDL_DisplayFormat(temp);
+#endif
         if (!sBackground) {
 			printf("ERROR: Couldn't convert thumbnail background to diplay pixel format: %s\n", SDL_GetError());
 			return;
@@ -4487,7 +4571,7 @@ bool dialog(const char * title, const char * instructions, char * input, int inp
 	rm->menu_font_large.drawCentered(320, 200, title);
 	rm->menu_font_small.draw(240, 235, instructions);
 	rm->menu_font_small.drawRightJustified(640, 0, maplist->currentFilename());
-	SDL_Flip(screen);
+	gfx_flipscreen();
 
     while (true) {
 		int framestart = SDL_GetTicks();
@@ -4516,7 +4600,7 @@ bool dialog(const char * title, const char * instructions, char * input, int inp
 							rm->menu_font_small.draw(240, 235, instructions);
 							rm->menu_font_small.draw(240, 255, input);
 							rm->menu_font_small.drawRightJustified(640, 0, maplist->currentFilename());
-							SDL_Flip(screen);
+							gfx_flipscreen();
 
 							currentChar--;
 						}
@@ -4534,7 +4618,7 @@ bool dialog(const char * title, const char * instructions, char * input, int inp
                         #else
                             Uint8 * keystate = SDL_GetKeyState(NULL);
                         #endif
-                        if (keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT]) {
+                        if (CheckKey(keystate, SDLK_LSHIFT) || CheckKey(keystate, SDLK_RSHIFT)) {
 								if (event.key.keysym.sym == 45)
 									key = 95;
 								else if (event.key.keysym.sym >= 95 && event.key.keysym.sym <= 122)
@@ -4572,7 +4656,7 @@ bool dialog(const char * title, const char * instructions, char * input, int inp
 							rm->menu_font_small.draw(240, 235, instructions);
 							rm->menu_font_small.draw(240, 255, input);
 							rm->menu_font_small.drawRightJustified(640, 0, maplist->currentFilename());
-							SDL_Flip(screen);
+							gfx_flipscreen();
 						}
 					}
 				break;

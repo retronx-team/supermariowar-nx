@@ -1,7 +1,7 @@
 language: cpp
 
 sudo: required
-dist: trusty
+dist: xenial
 
 branches:
   only:
@@ -10,20 +10,30 @@ branches:
 matrix:
   include:
   # Linux desktop builds
-  - compiler: gcc
+  - name: "Linux + GCC + SDL 1.2"
+    compiler: gcc
     env: BUILD=native SMW_USE_SDL2=false
 
-  - compiler: gcc
+  - name: "Linux + GCC + SDL 2"
+    compiler: gcc
     env: BUILD=native SMW_USE_SDL2=true
 
-  - compiler: clang
+  - name: "Linux + Clang + SDL 1.2"
+    compiler: clang
     env: BUILD=native SMW_USE_SDL2=false
 
-  - compiler: clang
+  - name: "Linux + Clang + SDL 2"
+    compiler: clang
     env: BUILD=native SMW_USE_SDL2=true
+
+  # MinGW cross
+  - name: "MinGW"
+    dist: bionic
+    env: BUILD=mingw SMW_USE_SDL2=true
 
   # OSX SDL1.2 build
-  - os: osx
+  - name: "macOS + SDL 1.2"
+    os: osx
     env: BUILD=native SMW_USE_SDL2=false
     compiler: clang
     before_script:
@@ -31,7 +41,8 @@ matrix:
     - brew install sdl sdl_image sdl_mixer
 
   # OSX SDL2 build
-  - os: osx
+  - name: "macOS + SDL 2"
+    os: osx
     env: BUILD=native SMW_USE_SDL2=true
     compiler: clang
     before_script:
@@ -39,16 +50,20 @@ matrix:
     - brew install sdl2 sdl2_image sdl2_mixer
 
   # Emscripten
-  - env: BUILD=emscripten
+  - name: "Emscripten"
+    env: BUILD=emscripten
 
   # Android builds
-  - language: android
+  - name: "Android ARM"
+    language: android
     env: BUILD=android ABILIST='armeabi armeabi-v7a arm64-v8a'
 
-  - language: android
+  - name: "Android Intel"
+    language: android
     env: BUILD=android ABILIST='x86 x86_64'
 
-  - language: android
+  - name: "Android MIPS"
+    language: android
     env: BUILD=android ABILIST='mips mips64'
 
 
@@ -59,8 +74,8 @@ before_script:
       sudo apt-get install -y
         cmake
         clang
-        gcc-4.8
-        g++-4.8
+        default-jre
+        g++
         libsdl1.2-dev
         libsdl-image1.2-dev
         libsdl-mixer1.2-dev
@@ -75,14 +90,28 @@ before_script:
   - if [[ "$BUILD" == "native" && "$SMW_USE_SDL2" == "false" ]]; then sdl-config --version; fi
   - if [[ "$BUILD" == "native" && "$SMW_USE_SDL2" == "true" ]];  then sdl2-config --version; fi
 
+  # MinGW cross
+  - if [[ "$BUILD" == "mingw" && "$TRAVIS_OS_NAME" == "linux" ]]; then
+      sudo apt-get -qq update &&
+      sudo apt-get install -y
+        cmake
+        g++-mingw-w64-i686
+    ; fi
+  - if [[ "$BUILD" == "mingw" && "$TRAVIS_OS_NAME" == "linux" ]]; then
+      export SDL2DIR=/ &&
+      curl -L https://github.com/mmatyas/supermariowar/releases/download/v2.0-beta.0/i686-w64-mingw32.tar.xz | tar xJf - -C /tmp/
+    ; fi
+  - if [[ "$BUILD" == "mingw" && "$TRAVIS_OS_NAME" == "linux" ]]; then $CXX --version; fi
+  - if [[ "$BUILD" == "mingw" && "$TRAVIS_OS_NAME" == "linux" ]]; then cmake --version; fi
+
   # Emscripten
   - if [[ "$BUILD" == "emscripten" && "$TRAVIS_OS_NAME" == "linux" ]]; then
-      wget https://github.com/mmatyas/mmatyas.github.io/releases/download/arm-libs/emscripten_1350.tgz;
-      tar xzf emscripten_1350.tgz;
-      export EM_PATH=$EM_PATH:$(pwd)/emsdk_portable/clang/fastcomp/build_master_64/bin;
-      export EM_PATH=$EM_PATH:$(pwd)/emsdk_portable/node/4.1.1_64bit/bin;
-      export EM_PATH=$EM_PATH:$(pwd)/emsdk_portable/emscripten/master;
-      export PATH=$EM_PATH:$PATH;
+      git clone https://github.com/emscripten-core/emsdk.git --depth=1;
+      cd emsdk;
+      ./emsdk install 1.39.5;
+      ./emsdk activate 1.39.5;
+      source ./emsdk_env.sh;
+      cd ..;
     fi
   - if [[ "$BUILD" == "emscripten" && "$TRAVIS_OS_NAME" == "linux" ]]; then emcc -v; fi
 
@@ -110,12 +139,35 @@ before_script:
 script:
   - if [[ "$BUILD" == "native" ]]; then mkdir build && cd build; fi
   - if [[ "$BUILD" == "native" && "$SMW_USE_SDL2" == "false" ]]; then
-      cmake ..;
-      make;
+      cmake -D USE_SDL2_LIBS:BOOL=OFF .. &&
+      make &&
+      cd ..;
     fi
   - if [[ "$BUILD" == "native" && "$SMW_USE_SDL2" == "true" ]]; then
-      cmake -D USE_SDL2_LIBS:BOOL=ON ..;
-      make smw;
+      cmake -D USE_SDL2_LIBS:BOOL=ON .. &&
+      make &&
+      cd ..;
+    fi
+  - if [[ "$BUILD" == "native" && "$SMW_USE_SDL2" == "true" && "$TRAVIS_COMPILER" == "gcc" ]]; then
+      export deploydir="supermariowar_$(date +%F)_linux" &&
+      mkdir "$deploydir" &&
+      cp docs/readme-v1.8.html build/Binaries/Release/{smw,smw-leveledit,smw-worldedit,smw-server} "${deploydir}/";
+    fi
+
+  # MinGW
+  - if [[ "$BUILD" == "mingw" && "$SMW_USE_SDL2" == "true" ]]; then
+      mkdir build && cd build &&
+      cmake -DCMAKE_TOOLCHAIN_FILE=../.travis/mingw_toolchain.cmake -DUSE_SDL2_LIBS=ON .. &&
+      make &&
+      cd ..;
+    fi
+  - if [[ "$BUILD" == "mingw" && "$SMW_USE_SDL2" == "true" ]]; then
+      export deploydir="supermariowar_$(date +%F)_windows" &&
+      mkdir "$deploydir" &&
+      cp docs/readme-v1.8.html "${deploydir}/" &&
+      cp /tmp/i686-w64-mingw32/bin/lib{modplug-1,mpg123-0,ogg-0,opus-0,opusfile-0,png16-16,vorbis-0,vorbisfile-3}.dll "${deploydir}/" &&
+      cp /tmp/i686-w64-mingw32/bin/{SDL2,SDL2_image,SDL2_mixer,zlib1}.dll "${deploydir}/" &&
+      cp build/Binaries/Release/{smw,smw-leveledit,smw-worldedit,smw-server}.exe "${deploydir}/";
     fi
 
   # Android
@@ -129,13 +181,20 @@ script:
   # Emscripten
   - if [[ "$BUILD" == "emscripten" ]]; then
       cd dependencies;
-      hg clone https://hg.libsdl.org/SDL_mixer SDL2_mixer;
+      curl -L https://www.libsdl.org/projects/SDL_mixer/release/SDL2_mixer-2.0.4.tar.gz | tar xzf -;
       cd ..;
-      sed -i 's|if (BUILD_STATIC_LIBS)|if (BUILD_STATIC_LIBS)\ninclude_directories(dependencies/SDL2_mixer)|' CMakeLists.txt;
-      unzip data.zip > /dev/null;
+      sed -i 's|if (BUILD_STATIC_LIBS)|if (BUILD_STATIC_LIBS)\ninclude_directories(dependencies/SDL2_mixer-2.0.4)|' CMakeLists.txt;
       mkdir build_js && cd build_js;
       emconfigure cmake .. -DNO_NETWORK=1 -DDISABLE_SYSLIB_CHECKS=1 -DUSE_SDL2_LIBS=1;
       emmake make smw;
+    fi
+
+  # Deploy
+  - if [[ -n "$deploydir" ]]; then
+      rsync -Ca data "${deploydir}/" --exclude .git &&
+      zip -r "${deploydir}.zip" "${deploydir}" &&
+      wget -c https://github.com/mmatyas/uploadtool/raw/master/upload.sh &&
+      bash ./upload.sh "${deploydir}.zip";
     fi
 
 android:

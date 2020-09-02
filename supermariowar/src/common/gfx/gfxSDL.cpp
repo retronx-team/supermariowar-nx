@@ -266,7 +266,7 @@ void GraphicsSDL::RecreateWindow(bool fullscreen)
     sdl2_window = SDL_CreateWindow("smw",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         GFX_WIN_W, GFX_WIN_H,
-        fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+        fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_RESIZABLE : SDL_WINDOW_RESIZABLE);
 
     if (!sdl2_window) {
         fprintf(stderr, "[gfx] Couldn't create window: %s\n", SDL_GetError());
@@ -315,7 +315,6 @@ void GraphicsSDL::create_game_window(bool fullscreen)
 void GraphicsSDL::setTitle(const char* title)
 {
     SDL_WM_SetCaption(title, "smw.ico");
-    SDL_ShowCursor(SDL_DISABLE);
 }
 
 void GraphicsSDL::FlipScreen()

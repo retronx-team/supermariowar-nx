@@ -200,7 +200,7 @@ void CPlayer::accelerate(float direction)
     }
     assert(maxVel >= 0.0);
 
-    if (std::abs(velx) > maxVel)
+    if ((direction == 1 && velx > maxVel) || (direction == -1 && velx < -maxVel))
         velx = maxVel * direction;
 
     if (!inair) {
@@ -1007,6 +1007,10 @@ void CPlayer::tryReleasingPowerup()
     if (game_values.gamepowerups[globalID] <= 0 || shyguy)
         return;
 
+    // Don't allow releasing another powerup when you're in the middle of releasing one
+    if (powerupused != -1)
+        return;
+
     powerupused = game_values.gamepowerups[globalID];
     game_values.gamepowerups[globalID] = -1;
 
@@ -1151,6 +1155,9 @@ void CPlayer::move()
                 if (playerKeys->game_jump.fDown || playerKeys->game_left.fDown || playerKeys->game_right.fDown)
                     suicidetimer.reset();
             }
+            //Let go of the jump button so that we clear "lockjump" so we can jump again when we hit the ground if we want to
+            if (inair && vely > 0 && (powerup != 3 || lockjump))
+                playerKeys->game_jump.fDown = false;
         }
     }
 
@@ -1272,7 +1279,7 @@ void CPlayer::move()
                 enableFreeFall();
 
             if (playerKeys->game_down.fDown) {
-                if (!lockfall && !inair && playerDevice == DEVICE_KEYBOARD) {
+                if (!lockfall && !inair && (playerDevice == DEVICE_KEYBOARD || pPlayerAI)) {
                     lockfall = true;
                     fallthrough = true;
                 }
@@ -2829,6 +2836,8 @@ bool CPlayer::AcceptItem(MO_CarriedObject * item)
 
         carriedItem = item;
         item->owner = this;
+        carriedItem->velx = 0.0f;
+        carriedItem->vely = 0.0f;
 
         fAcceptingItem = false;
         return true;

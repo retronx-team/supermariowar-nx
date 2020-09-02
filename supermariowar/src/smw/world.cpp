@@ -12,8 +12,10 @@
 #include <cstdlib> // atoi()
 #include <cstring>
 
+#include <fstream>
 #include <map>
 #include <queue>
+#include <string>
 
 #if defined(__APPLE__)
 #include <sys/stat.h>
@@ -408,13 +410,14 @@ bool WorldMap::Load(short tilesize)
     }
 
     const char * szPath = worldlist->GetIndex(game_values.worldindex);
-    FILE * file = fopen(szPath, "r");
     worldName = stripPathAndExtension(szPath);
 
+    std::ifstream file(szPath);
     if (!file)
         return false;
 
-    char buffer[1024];
+    std::string line;
+    char* buffer = NULL;
     short iReadType = 0;
     int32_t iVersion[4] = {0, 0, 0, 0};
     short iMapTileReadRow = 0;
@@ -422,8 +425,18 @@ bool WorldMap::Load(short tilesize)
     short iCurrentWarp = 0;
     short iCurrentVehicle = 0;
 
-    while (fgets(buffer, 1024, file)) {
-        if (buffer[0] == '#' || buffer[0] == '\n' || buffer[0] == '\r' || buffer[0] == ' ' || buffer[0] == '\t')
+    while (std::getline(file, line)) {
+        if (line.empty())
+            continue;
+
+        if (buffer)
+            delete[] buffer;
+
+        buffer = new char[line.size() + 1];
+        std::copy(line.begin(), line.end(), buffer);
+        buffer[line.size()] = '\0';
+
+        if (buffer[0] == '#' || buffer[0] == '\r' || buffer[0] == ' ' || buffer[0] == '\t')
             continue;
 
         if (iReadType == 0) { //Read version number
@@ -465,7 +478,7 @@ bool WorldMap::Load(short tilesize)
                 iDrawSurfaceTiles = 456; //19 * 24 = 456 max tiles in world surface
 
             iTilesPerCycle = iDrawSurfaceTiles / 8;
-        } else if (iReadType == 4) { //background sprites
+        } else if (iReadType == 4) { //background water
             char * psz = strtok(buffer, ",\n");
 
             for (short iMapTileReadCol = 0; iMapTileReadCol < iWidth; iMapTileReadCol++) {
@@ -765,8 +778,8 @@ bool WorldMap::Load(short tilesize)
     }
 
 RETURN:
-
-    fclose(file);
+    if (buffer)
+        delete[] buffer;
 
     return iReadType == 17;
 }
@@ -838,7 +851,10 @@ bool WorldMap::Save(const char * szPath)
         return false;
 
     fprintf(file, "#Version\n");
-    fprintf(file, "%d.%d.%d.%d\n\n", g_iVersion[0], g_iVersion[1], g_iVersion[2], g_iVersion[3]);
+    // For compatibility, let's use the final 1.8 version until
+    // there's no actual change in the world format.
+    fprintf(file, "1.8.0.4\n\n");
+    //fprintf(file, "%d.%d.%d.%d\n\n", g_iVersion[0], g_iVersion[1], g_iVersion[2], g_iVersion[3]);
 
     fprintf(file, "#Music Category\n");
     fprintf(file, "%d\n\n", iMusicCategory);
@@ -1065,42 +1081,38 @@ void WorldMap::New(short w, short h)
 void WorldMap::Resize(short w, short h)
 {
     //Copy tiles from old map
-    WorldMapTile ** tempTiles = NULL;
+    WorldMapTile ** tempTiles = tiles;
     short iOldWidth = iWidth;
     short iOldHeight = iHeight;
 
-    if (tiles) {
-        tempTiles = new WorldMapTile*[w];
+    //Create new map
+    iWidth = w;
+    iHeight = h;
 
-        for (short iCol = 0; iCol < w && iCol < iOldWidth; iCol++) {
-            tempTiles[iCol] = new WorldMapTile[h];
+    tiles = new WorldMapTile*[iWidth];
 
-            for (short iRow = 0; iRow < h && iRow < iOldHeight; iRow++) {
-                tempTiles[iCol][iRow].iBackgroundSprite = tiles[iCol][iRow].iBackgroundSprite;
-                tempTiles[iCol][iRow].iBackgroundWater = tiles[iCol][iRow].iBackgroundWater;
-                tempTiles[iCol][iRow].iForegroundSprite = tiles[iCol][iRow].iForegroundSprite;
-                tempTiles[iCol][iRow].iConnectionType = tiles[iCol][iRow].iConnectionType;
-                tempTiles[iCol][iRow].iType = tiles[iCol][iRow].iType;
+    //Copy tiles to new map
+    for (short iCol = 0; iCol < iWidth; iCol++) {
+        tiles[iCol] = new WorldMapTile[iHeight];
+        for (short iRow = 0; iRow < iHeight; iRow++) {
+            if (iCol < iOldWidth && iRow < iOldHeight)
+                tiles[iCol][iRow] = tempTiles[iCol][iRow];
+            else {
+                tiles[iCol][iRow].iBackgroundSprite = 0;
+                tiles[iCol][iRow].iBackgroundWater = 0;
+                tiles[iCol][iRow].iForegroundSprite = 0;
+                tiles[iCol][iRow].iConnectionType = 0;
+                tiles[iCol][iRow].iType = 0;
+                tiles[iCol][iRow].iID = iRow * iWidth + iCol;
+                tiles[iCol][iRow].iVehicleBoundary = 0;
+                tiles[iCol][iRow].iWarp = 0;
             }
         }
     }
 
-    //Create new map
-    New(w, h);
-
-    //Copy into new map
+    //Delete old tiles
     if (tempTiles) {
-        for (short iCol = 0; iCol < w && iCol < iOldWidth; iCol++) {
-            for (short iRow = 0; iRow < h && iRow < iOldHeight; iRow++) {
-                tiles[iCol][iRow].iBackgroundSprite = tempTiles[iCol][iRow].iBackgroundSprite;
-                tiles[iCol][iRow].iBackgroundWater = tempTiles[iCol][iRow].iBackgroundWater;
-                tiles[iCol][iRow].iForegroundSprite = tempTiles[iCol][iRow].iForegroundSprite;
-                tiles[iCol][iRow].iConnectionType = tempTiles[iCol][iRow].iConnectionType;
-                tiles[iCol][iRow].iType = tempTiles[iCol][iRow].iType;
-            }
-        }
-
-        for (short iCol = 0; iCol < w; iCol++)
+        for (short iCol = 0; iCol < iOldWidth; iCol++)
             delete [] tempTiles[iCol];
 
         delete [] tempTiles;
@@ -1242,7 +1254,7 @@ void WorldMap::DrawTileToSurface(SDL_Surface * surface, short iCol, short iRow, 
     if (iLayer != 1) {
         if (tile->iCompleted >= 0) {
             SDL_Rect rSrc = {(tile->iCompleted + 10) << iTileSizeShift, 5 << iTileSizeShift, iTileSize, iTileSize};
-            SDL_BlitSurface(rm->spr_worldforeground[iTileSheet].getSurface(), &rSrc, surface, &r);
+            SDL_BlitSurface(rm->spr_worldforegroundspecial[iTileSheet].getSurface(), &rSrc, surface, &r);
         } else {
             if (iForegroundSprite >= 0 && iForegroundSprite < WORLD_FOREGROUND_STAGE_OFFSET) {
                 short iPathStyle = iForegroundSprite / WORLD_PATH_SPRITE_SET_SIZE;
@@ -1266,18 +1278,18 @@ void WorldMap::DrawTileToSurface(SDL_Surface * surface, short iCol, short iRow, 
             } else if (iForegroundSprite >= WORLD_FOREGROUND_STAGE_OFFSET && iForegroundSprite <= WORLD_FOREGROUND_STAGE_OFFSET + 399) {
                 short iTileColor = (iForegroundSprite - WORLD_FOREGROUND_STAGE_OFFSET) / 100;
                 SDL_Rect rSrc = {(10 << iTileSizeShift) + iAnimationFrame, iTileColor << iTileSizeShift, iTileSize, iTileSize};
-                SDL_BlitSurface(rm->spr_worldforeground[iTileSheet].getSurface(), &rSrc, surface, &r);
+                SDL_BlitSurface(rm->spr_worldforegroundspecial[iTileSheet].getSurface(), &rSrc, surface, &r);
 
                 short iTileNumber = (iForegroundSprite - WORLD_FOREGROUND_STAGE_OFFSET) % 100;
                 rSrc.x = (iTileNumber % 10) << iTileSizeShift;
                 rSrc.y = (iTileNumber / 10) << iTileSizeShift;
-                SDL_BlitSurface(rm->spr_worldforeground[iTileSheet].getSurface(), &rSrc, surface, &r);
+                SDL_BlitSurface(rm->spr_worldforegroundspecial[iTileSheet].getSurface(), &rSrc, surface, &r);
             } else if (iForegroundSprite >= WORLD_BRIDGE_SPRITE_OFFSET && iForegroundSprite <= WORLD_BRIDGE_SPRITE_OFFSET + 3) {
                 SDL_Rect rSrc = {(iForegroundSprite - WORLD_BRIDGE_SPRITE_OFFSET + 10) << iTileSizeShift, 7 << iTileSizeShift, iTileSize, iTileSize};
-                SDL_BlitSurface(rm->spr_worldforeground[iTileSheet].getSurface(), &rSrc, surface, &r);
+                SDL_BlitSurface(rm->spr_worldforegroundspecial[iTileSheet].getSurface(), &rSrc, surface, &r);
             } else if (iForegroundSprite >= WORLD_START_SPRITE_OFFSET && iForegroundSprite <= WORLD_START_SPRITE_OFFSET + 1) {
                 SDL_Rect rSrc = {(iForegroundSprite - WORLD_START_SPRITE_OFFSET + 10) << iTileSizeShift, 4 << iTileSizeShift, iTileSize, iTileSize};
-                SDL_BlitSurface(rm->spr_worldforeground[iTileSheet].getSurface(), &rSrc, surface, &r);
+                SDL_BlitSurface(rm->spr_worldforegroundspecial[iTileSheet].getSurface(), &rSrc, surface, &r);
             } else if (iForegroundSprite >= WORLD_FOREGROUND_SPRITE_OFFSET && iForegroundSprite <= WORLD_FOREGROUND_SPRITE_OFFSET + 179) {
                 short iSprite = iForegroundSprite - WORLD_FOREGROUND_SPRITE_OFFSET;
                 SDL_Rect rSrc = {(iSprite % 12) << iTileSizeShift, (iSprite / 12) << iTileSizeShift, iTileSize, iTileSize};
@@ -1293,7 +1305,7 @@ void WorldMap::DrawTileToSurface(SDL_Surface * surface, short iCol, short iRow, 
         short iType = tile->iType;
         if (iType >= 2 && iType <= 5) {
             SDL_Rect rSrc = {(iType + 8) << iTileSizeShift, 6 << iTileSizeShift, iTileSize, iTileSize};
-            SDL_BlitSurface(rm->spr_worldforeground[iTileSheet].getSurface(), &rSrc, surface, &r);
+            SDL_BlitSurface(rm->spr_worldforegroundspecial[iTileSheet].getSurface(), &rSrc, surface, &r);
         }
     }
 }

@@ -274,6 +274,8 @@ IO_MovingObject * createpowerup(short iType, short ix, short iy, bool side, bool
 
 void CheckSecret(short id)
 {
+    if (!game_values.secretsenabled)
+        return;
     if (id == 0 && !game_values.unlocksecretunlocked[0]) {
         short iCountTeams = 0;
         for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++) {
@@ -2373,7 +2375,10 @@ MO_CarriedObject::MO_CarriedObject(gfxSprite *nspr, short x, short y, short iNum
 }
 
 MO_CarriedObject::~MO_CarriedObject()
-{}
+{
+    if (owner)
+        owner->carriedItem = NULL;
+}
 
 void MO_CarriedObject::init()
 {

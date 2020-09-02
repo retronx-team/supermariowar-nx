@@ -1213,6 +1213,7 @@ void MI_TourStop::Refresh(short iTourStop)
             gamemode = pipegamemode;
             tourstopicon = 25;
         } else if (tourstop->iMode == game_mode_boss_minigame) {
+            bossgamemode->SetBossType(tourstop->gmsSettings.boss.bosstype);
             gamemode = bossgamemode;
             tourstopicon = 26;
         } else if (tourstop->iMode == game_mode_boxes_minigame) {
@@ -3488,7 +3489,7 @@ MenuCodeEnum MI_World::SendInput(CPlayerInput * playerInput)
             if (playerKeys->menu_cancel.fPressed) {
                 if (DEVICE_KEYBOARD != playerInput->inputControls[iPlayer]->iDevice || iPlayer == 0) {
                     fModifying = false;
-                    return MENU_CODE_UNSELECT_ITEM;
+                    return MENU_CODE_BACK_TEAM_SELECT_MENU;
                 }
             }
 

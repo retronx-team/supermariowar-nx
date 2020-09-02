@@ -312,6 +312,7 @@ int main(int argc, char *argv[])
     char title[128];
     sprintf(title, "%s %s", TITLESTRING, VERSIONNUMBER);
     gfx_settitle(title);
+    SDL_ShowCursor(SDL_DISABLE);
 
     printf("\n---------------- loading ----------------\n");
 

@@ -167,7 +167,7 @@ void CPlayerAI::Think(COutputControl * playerKeys)
     ***************************************************/
 
     short actionType = 0;
-    if (nearestObjects.threat && nearestObjects.threatdistance < 14400) {
+    if (nearestObjects.threat && nearestObjects.threatdistance < 14400 && !pPlayer->isInvincible()) {
         actionType = 2;
     } else if (nearestObjects.stomp && nearestObjects.stompdistance < 14400) {
         actionType = 4;
@@ -179,7 +179,7 @@ void CPlayerAI::Think(COutputControl * playerKeys)
     } else if (nearestObjects.teammate) {
         actionType = 3;
     } else if (nearestObjects.goal) {
-        if (nearestObjects.playerdistance < 4096)
+        if (nearestObjects.playerdistance < 8100)
             actionType = 0;
         else
             actionType = 1;
@@ -269,6 +269,8 @@ void CPlayerAI::Think(COutputControl * playerKeys)
             } else {
                 if (nearestObjects.playerdistance < 8100)	//else if player is near but higher, run away (left)
                     *moveAway = true;
+                else
+                    *moveToward = true;	//Don't just stand and do nothing
             }
 
 
@@ -281,24 +283,20 @@ void CPlayerAI::Think(COutputControl * playerKeys)
                        player->ix - ix < 45 &&
                        player->ix - ix > -45 && RandomNumberGenerator::generator().getBoolean()) {
                 //or if player is high
-                playerKeys->game_jump.fDown = true;
-                playerKeys->game_down.fDown = true;
+                if (!pPlayer->inair) playerKeys->game_down.fDown = true;
 
                 if (!pPlayer->superstomp.isInSuperStompState()) {
-                    //If the player is tanooki, then try to super stomp on them
-                    if (pPlayer->tanookisuit.isOn()) {
-                        playerKeys->game_turbo.fPressed = true;
-                        pPlayer->lockfire = false;
-                    } else if (pPlayer->kuriboshoe.is_on()) { //else if the player has the shoe then stomp
-                        playerKeys->game_down.fPressed = true;
+                    //If the player has the tanooki or shoe, then try to super stomp on them
+                    if (pPlayer->tanookisuit.isOn() || pPlayer->kuriboshoe.is_on()) {
+                        playerKeys->game_down.fDown = true;
                         playerKeys->game_jump.fPressed = true;
+                        if (pPlayer->tanookisuit.isOn())
+                        {
+                            playerKeys->game_turbo.fPressed = true;
+                            pPlayer->lockfire = false;
+                        }
                     }
                 }
-            } else if (iy - player->iy > 70) { //If the player is significatly below us, then jump
-                playerKeys->game_jump.fDown = true;
-            } else {
-                if (!RandomNumberGenerator::generator().getBoolean(60))
-                    playerKeys->game_jump.fDown = true;
             }
         } else if (actionType == 1) { //Go for goal
             CObject * goal = nearestObjects.goal;
@@ -311,13 +309,7 @@ void CPlayerAI::Think(COutputControl * playerKeys)
             if (goal->iy <= iy && goal->ix - ix < 45 && goal->ix - ix > -45) {
                 playerKeys->game_jump.fDown = true;
             } else if (goal->iy > iy && goal->ix - ix < 45 && goal->ix - ix > -45) {
-                playerKeys->game_jump.fDown = true;
-                playerKeys->game_down.fDown = true;
-            } else if (iy - goal->iy > 70) {
-                playerKeys->game_jump.fDown = true;
-            } else {
-                if (!RandomNumberGenerator::generator().getBoolean(60))
-                    playerKeys->game_jump.fDown = true;
+                if (!pPlayer->inair) playerKeys->game_down.fDown = true;
             }
 
             if (goal->getObjectType() == object_moving && ((IO_MovingObject*)goal)->getMovingObjectType() == movingobject_egg)
@@ -359,8 +351,7 @@ void CPlayerAI::Think(COutputControl * playerKeys)
                 playerKeys->game_left.fDown = true;
 
             if (threat->iy <= iy && threat->ix - ix < 60 && threat->ix - ix > -60) {
-                playerKeys->game_jump.fDown = true;
-                playerKeys->game_down.fDown = true;
+                if (!pPlayer->inair) playerKeys->game_down.fDown = true;
             } else if (threat->iy > iy && threat->ix - ix < 60 && threat->ix - ix > -60) {
                 playerKeys->game_jump.fDown = true;
             }
@@ -375,13 +366,7 @@ void CPlayerAI::Think(COutputControl * playerKeys)
             if (teammate->iy <= iy && teammate->ix - ix < 45 && teammate->ix - ix > -45) {
                 playerKeys->game_jump.fDown = true;
             } else if (teammate->iy > iy && teammate->ix - ix < 45 && teammate->ix - ix > -45) {
-                playerKeys->game_jump.fDown = true;
-                playerKeys->game_down.fDown = true;
-            } else if (iy - teammate->iy > 70) {
-                playerKeys->game_jump.fDown = true;
-            } else {
-                if (!RandomNumberGenerator::generator().getBoolean(60))
-                    playerKeys->game_jump.fDown = true;
+                if (!pPlayer->inair) playerKeys->game_down.fDown = true;
             }
         } else if (actionType == 4) { //Stomp something (goomba, koopa, cheepcheep)
             CObject * stomp = nearestObjects.stomp;
@@ -411,25 +396,35 @@ void CPlayerAI::Think(COutputControl * playerKeys)
             if (stomp->iy <= iy + PH && nearestObjects.stompdistance < 2025) {
                 playerKeys->game_jump.fDown = true;
             } else if (stomp->iy > iy + PH && nearestObjects.stompdistance < 2025) {
-                playerKeys->game_jump.fDown = true;
-                playerKeys->game_down.fDown = true;
+                if (!pPlayer->inair) playerKeys->game_down.fDown = true;
 
                 if (!pPlayer->superstomp.isInSuperStompState()) {
-                    //If the player is tanooki, then try to super stomp on them
-                    if (pPlayer->tanookisuit.isOn()) {
-                        playerKeys->game_turbo.fPressed = true;
-                        pPlayer->lockfire = false;
-                    } else if (pPlayer->kuriboshoe.is_on()) { //else if the player has the shoe then stomp
-                        playerKeys->game_down.fPressed = true;
+                    //If the player has the tanooki or shoe, then try to super stomp on them
+                    if (pPlayer->tanookisuit.isOn() || pPlayer->kuriboshoe.is_on()) {
+                        playerKeys->game_down.fDown = true;
                         playerKeys->game_jump.fPressed = true;
+                        if (pPlayer->tanookisuit.isOn())
+                        {
+                            playerKeys->game_turbo.fPressed = true;
+                            pPlayer->lockfire = false;
+                        }
                     }
                 }
-            } else {
-                if (!RandomNumberGenerator::generator().getBoolean(60))
-                    playerKeys->game_jump.fDown = true;
             }
         }
     }
+
+    //Jump if trying to move left/right and x velocity is zero
+    if ((playerKeys->game_left.fDown || playerKeys->game_right.fDown) && pPlayer->velx == 0.0f)
+        playerKeys->game_jump.fDown = true;
+
+    //Pick up throwable blocks from below
+    if (playerKeys->game_turbo.fDown && !carriedItem && !pPlayer->inair)
+        playerKeys->game_turbo.fPressed = true;
+
+    //Stay inside tanooki statue
+    if (pPlayer->tanookisuit.isOn() && pPlayer->tanookisuit.isStatue())
+        playerKeys->game_down.fDown = true;
 
     //"Star Mode" specific stuff
     //Drop the star if we're not it
@@ -448,7 +443,7 @@ void CPlayerAI::Think(COutputControl * playerKeys)
         //"Phanto Mode" specific stuff
         if (game_values.gamemode->gamemode == game_mode_chase) {
             //Ignore the key if a phanto is really close
-            if (nearestObjects.threat && nearestObjects.threat->getObjectType() == object_phanto && nearestObjects.threatdistance < 4096) {
+            if (nearestObjects.threat && nearestObjects.threat->getObjectType() == object_phanto && nearestObjects.threatdistance < 4096 && !pPlayer->isInvincible()) {
                 playerKeys->game_turbo.fDown = false;
 
                 //Ignore the key for a little while
@@ -479,10 +474,6 @@ void CPlayerAI::Think(COutputControl * playerKeys)
             playerKeys->game_turbo.fDown = false;
         }
     }
-
-    //Let go of the jump button so that we clear "lockjump" so we can jump again when we hit the ground if we want to
-    if (pPlayer->inair && pPlayer->vely > 0 && (pPlayer->powerup != 3 || (pPlayer->powerup == 3 && pPlayer->lockjump)))
-        playerKeys->game_jump.fDown = false;
 
     /***************************************************
     * 4. Deal with falling onto spikes (this needs to be improved)
@@ -516,7 +507,7 @@ void CPlayerAI::Think(COutputControl * playerKeys)
 
             goto ExitDeathCheck;
         } else if ((ttLeftTile & tile_flag_solid) || (ttLeftTile & tile_flag_solid_on_top) || g_map->block(iDeathX1, iDeathY) ||
-                  ((ttRightTile & tile_flag_solid) && (ttRightTile & tile_flag_solid_on_top)) || g_map->block(iDeathX2, iDeathY)) {
+                  (ttRightTile & tile_flag_solid) || (ttRightTile & tile_flag_solid_on_top) || g_map->block(iDeathX2, iDeathY)) {
             iFallDanger = 0;
             goto ExitDeathCheck;
         }
@@ -537,7 +528,7 @@ void CPlayerAI::Think(COutputControl * playerKeys)
 
                 goto ExitDeathCheck;
             } else if ((lefttile & tile_flag_solid) || (lefttile & tile_flag_solid_on_top) ||
-                      ((righttile & tile_flag_solid) && (righttile & tile_flag_solid_on_top))) {
+                      (righttile & tile_flag_solid) || (righttile & tile_flag_solid_on_top)) {
                 iFallDanger = 0;
                 goto ExitDeathCheck;
             }
@@ -574,6 +565,10 @@ ExitDeathCheck:
     while (iDeathY >= 0 && heightlimit > 0) {
         int ttLeftTile = g_map->map(iDeathX1, iDeathY);
         int ttRightTile = g_map->map(iDeathX2, iDeathY);
+
+        if (heightlimit == 2 && (ttLeftTile & tile_flag_solid || ttRightTile & tile_flag_solid) && 
+            !g_map->checkforwarp(iDeathX1, iDeathX2, iDeathY, 2)) //Avoid jumping wildly in 1 tile high gaps
+            playerKeys->game_jump.fDown = false;
 
         if ((ttLeftTile & tile_flag_solid && (ttLeftTile & tile_flag_death_on_bottom) == 0) ||
                 (ttRightTile & tile_flag_solid && (ttRightTile & tile_flag_death_on_bottom) == 0) ||
