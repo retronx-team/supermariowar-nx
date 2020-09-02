@@ -67,4 +67,28 @@ void platformSwitchShowControllerOptions(void) {
     printf("%s: hidLaShowControllerSupportForSystem exited with rc %x\n", __func__, rc);
 }
 
+bool platformSwitchOSKInput(char* header, char* initialValue, char* out, size_t maxlen) {
+    printf("%s: header = \"%s\", initialValue = \"%s\", maxlen = %u);\n", __func__, header, initialValue ? initialValue : "NULL", maxlen);
+    SwkbdConfig kbd;
+    Result rc = swkbdCreate(&kbd, 0);
+    printf("swkbdCreate(): 0x%x\n", rc);
+
+    if (R_SUCCEEDED(rc)) {
+        swkbdConfigMakePresetDefault(&kbd);
+        swkbdConfigSetHeaderText(&kbd, header);
+        kbd.arg.arg.arg.stringLenMax = maxlen-1;
+        if(initialValue) {
+            swkbdConfigSetInitialText(&kbd, initialValue);
+        }
+        rc = swkbdShow(&kbd, out, maxlen);
+        printf("swkbdShow(): 0x%x\n", rc);
+        if (R_SUCCEEDED(rc)) {
+            printf("swkbd out str: %s\n", out);
+        }
+        swkbdClose(&kbd);
+    }
+
+    return R_SUCCEEDED(rc);
+}
+
 #endif

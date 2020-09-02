@@ -13,6 +13,7 @@ extern "C"
 #endif
 
 void platformSwitchShowControllerOptions(void);
+bool platformSwitchOSKInput(char* header, char* initialValue, char* out, size_t maxlen);
 
 #ifdef __cplusplus
 }
