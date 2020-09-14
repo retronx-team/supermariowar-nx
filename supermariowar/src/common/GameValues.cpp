@@ -7,6 +7,10 @@
 #include "MapList.h" // req. only by WriteConfig
 #include "sfx.h"
 
+#ifdef __SWITCH__
+#include "platform/switch.h"
+#endif
+
 #include <stdio.h>
 #include <stdexcept>
 
@@ -64,17 +68,17 @@ SDL_KEYTYPE controlkeys[2][2][4][NUM_KEYS] = { { { {SDLK_LEFT, SDLK_RIGHT, SDLK_
 };
 #elif defined(__SWITCH__)
     //left, right, jump, down, turbo, powerup, start, cancel;
-    { { {JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_STICK_1_DOWN, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 10, JOY_BUTTON_START + 11},
-            {JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_STICK_1_DOWN, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 10, JOY_BUTTON_START + 11},
-            {JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_STICK_1_DOWN, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 10, JOY_BUTTON_START + 11},
-            {JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_STICK_1_DOWN, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 10, JOY_BUTTON_START + 11}
+    {   {   {SWITCH_SMW_BTN(LSTICK_LEFT), SWITCH_SMW_BTN(LSTICK_RIGHT), SWITCH_SMW_BTN(B), SWITCH_SMW_BTN(LSTICK_DOWN), SWITCH_SMW_BTN(Y), SWITCH_SMW_BTN(X), SWITCH_SMW_BTN(PLUS), SWITCH_SMW_BTN(MINUS)},
+            {SWITCH_SMW_BTN(LSTICK_LEFT), SWITCH_SMW_BTN(LSTICK_RIGHT), SWITCH_SMW_BTN(B), SWITCH_SMW_BTN(LSTICK_DOWN), SWITCH_SMW_BTN(Y), SWITCH_SMW_BTN(X), SWITCH_SMW_BTN(PLUS), SWITCH_SMW_BTN(MINUS)},
+            {SWITCH_SMW_BTN(LSTICK_LEFT), SWITCH_SMW_BTN(LSTICK_RIGHT), SWITCH_SMW_BTN(B), SWITCH_SMW_BTN(LSTICK_DOWN), SWITCH_SMW_BTN(Y), SWITCH_SMW_BTN(X), SWITCH_SMW_BTN(PLUS), SWITCH_SMW_BTN(MINUS)},
+            {SWITCH_SMW_BTN(LSTICK_LEFT), SWITCH_SMW_BTN(LSTICK_RIGHT), SWITCH_SMW_BTN(B), SWITCH_SMW_BTN(LSTICK_DOWN), SWITCH_SMW_BTN(Y), SWITCH_SMW_BTN(X), SWITCH_SMW_BTN(PLUS), SWITCH_SMW_BTN(MINUS)}
         },
 
         //up, down, left, right, select, cancel, random, fast scroll
-        {   {JOY_STICK_1_UP, JOY_STICK_1_DOWN, JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 3},
-            {JOY_STICK_1_UP, JOY_STICK_1_DOWN, JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 3},
-            {JOY_STICK_1_UP, JOY_STICK_1_DOWN, JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 3},
-            {JOY_STICK_1_UP, JOY_STICK_1_DOWN, JOY_STICK_1_LEFT, JOY_STICK_1_RIGHT, JOY_BUTTON_START, JOY_BUTTON_START + 1, JOY_BUTTON_START + 2, JOY_BUTTON_START + 3}
+        {   {SWITCH_SMW_BTN(LSTICK_UP), SWITCH_SMW_BTN(LSTICK_DOWN), SWITCH_SMW_BTN(LSTICK_LEFT), SWITCH_SMW_BTN(LSTICK_RIGHT), SWITCH_SMW_BTN(A), SWITCH_SMW_BTN(B), SWITCH_SMW_BTN(X), SWITCH_SMW_BTN(Y)},
+            {SWITCH_SMW_BTN(LSTICK_UP), SWITCH_SMW_BTN(LSTICK_DOWN), SWITCH_SMW_BTN(LSTICK_LEFT), SWITCH_SMW_BTN(LSTICK_RIGHT), SWITCH_SMW_BTN(A), SWITCH_SMW_BTN(B), SWITCH_SMW_BTN(X), SWITCH_SMW_BTN(Y)},
+            {SWITCH_SMW_BTN(LSTICK_UP), SWITCH_SMW_BTN(LSTICK_DOWN), SWITCH_SMW_BTN(LSTICK_LEFT), SWITCH_SMW_BTN(LSTICK_RIGHT), SWITCH_SMW_BTN(A), SWITCH_SMW_BTN(B), SWITCH_SMW_BTN(X), SWITCH_SMW_BTN(Y)},
+            {SWITCH_SMW_BTN(LSTICK_UP), SWITCH_SMW_BTN(LSTICK_DOWN), SWITCH_SMW_BTN(LSTICK_LEFT), SWITCH_SMW_BTN(LSTICK_RIGHT), SWITCH_SMW_BTN(A), SWITCH_SMW_BTN(B), SWITCH_SMW_BTN(X), SWITCH_SMW_BTN(Y)}
         }
     }
 };
@@ -94,6 +98,29 @@ SDL_KEYTYPE controlkeys[2][2][4][NUM_KEYS] = { { { {SDLK_LEFT, SDLK_RIGHT, SDLK_
         }
     }
 };
+#endif
+
+
+#ifdef __SWITCH__
+static void _migrateOldSwitchConfig(CInputPlayerControl* playerControls) {
+    #define __SWAP_CONTROLS(x, cond, replace) do { if(x == cond) { x = replace; } } while(0)
+    #define __SWAP_CONTROLS_STICK(x, joy_stick, switch_stick) do {\
+        __SWAP_CONTROLS(x, joy_stick ## _LEFT, SWITCH_SMW_BTN(switch_stick ## _LEFT));\
+        __SWAP_CONTROLS(x, joy_stick ## _UP, SWITCH_SMW_BTN(switch_stick ## _UP));\
+        __SWAP_CONTROLS(x, joy_stick ## _RIGHT, SWITCH_SMW_BTN(switch_stick ## _RIGHT));\
+        __SWAP_CONTROLS(x, joy_stick ## _DOWN, SWITCH_SMW_BTN(switch_stick ## _DOWN));\
+    } while(0)
+
+    for(unsigned i = 0; i < 2; i++) {
+        for(size_t j = 0; j < NUM_KEYS; j++) {
+            __SWAP_CONTROLS_STICK(playerControls->inputGameControls[i].keys[j], JOY_STICK_1, LSTICK);
+            __SWAP_CONTROLS_STICK(playerControls->inputGameControls[i].keys[j], JOY_STICK_2, RSTICK);
+        }
+    }
+
+    #undef __SWAP_CONTROLS_STICK
+    #undef __SWAP_CONTROLS
+}
 #endif
 
 extern CGameValues game_values;
@@ -481,6 +508,9 @@ void CGameValues::ReadBinaryConfig() {
                 iDevice = DEVICE_KEYBOARD;
 
             playerInput.inputControls[iPlayer] = &inputConfiguration[iPlayer][iDevice == DEVICE_KEYBOARD ? 0 : 1];
+#endif
+#if defined(__SWITCH__)
+            _migrateOldSwitchConfig(playerInput.inputControls[iPlayer]);
 #endif
         }
     }

@@ -3,6 +3,9 @@
 #include <switch.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <SDL_events.h>
+
+#include "switch.h"
 
 static FILE* g_logfile = NULL;
 
@@ -89,6 +92,22 @@ bool platformSwitchOSKInput(char* header, char* initialValue, char* out, size_t 
     }
 
     return R_SUCCEEDED(rc);
+}
+
+bool platformSwitchSDLEventTransform(SDL_Event* event) {
+
+    switch(event->type) {
+        case SDL_JOYBUTTONDOWN:
+        case SDL_JOYBUTTONUP:
+            if(event->jbutton.button >= SWITCH_SDL_JOY_BTN_DPAD_LEFT && event->jbutton.button <= SWITCH_SDL_JOY_BTN_DPAD_DOWN) {
+                event->jbutton.button += (SWITCH_SDL_JOY_BTN_LSTICK_LEFT - SWITCH_SDL_JOY_BTN_DPAD_LEFT);
+            }
+            return true;
+        case SDL_JOYHATMOTION:
+        case SDL_JOYAXISMOTION:
+            return false;
+    }
+    return true;
 }
 
 #endif

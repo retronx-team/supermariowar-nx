@@ -47,7 +47,11 @@ class MI_InputControlField : public UI_Control
 		short iKeyIndex;
 		short iPlayerIndex;
 
+#ifdef __SWITCH__
+		static const char * Joynames[36];
+#else
 		static const char * Joynames[30];
+#endif
 #ifndef USE_SDL2
 		static const char * Keynames[340];
 #endif

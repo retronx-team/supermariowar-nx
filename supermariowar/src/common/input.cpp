@@ -3,6 +3,10 @@
 #include "GameValues.h"
 #include "GlobalConstants.h"
 
+#ifdef __SWITCH__
+#include "../smw/platform/switch.h"
+#endif
+
 extern CGameValues game_values;
 
 CPlayerInput::CPlayerInput()
@@ -113,6 +117,12 @@ void CPlayerInput::ResetKeys()
 //iGameState == 0 for in game and 1 for menu
 void CPlayerInput::Update(SDL_Event event, short iGameState)
 {
+	#ifdef __SWITCH__
+	if(!platformSwitchSDLEventTransform(&event)) {
+		return;
+	}
+	#endif
+
 	bool fFound = false;
     for (short iPlayer = -1; iPlayer < MAX_PLAYERS; iPlayer++) {
 		CInputControl * inputControl;

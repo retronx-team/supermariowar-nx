@@ -5,6 +5,10 @@
 #include "ui/MI_SelectField.h"
 #include "ResourceManager.h"
 
+#ifdef __SWITCH__
+#include "platform/switch.h"
+#endif
+
 #include <cstdlib>
 #include <cstring>
 
@@ -94,10 +98,16 @@ MI_InputControlField::~MI_InputControlField()
         "Start Button", "Back Button", "Left Stick Click", "Right Stick Click", "Button 1", "Button 2", "Button 3", "Button 4", "Button 5", "Button 6"
     };
 #elif defined(__SWITCH__)
-    const char * MI_InputControlField::Joynames[30] = {
-        "Left Stick Up", "Left Stick Down", "Left Stick Left", "Left Stick Right", "Right Stick Up", "Right Stick Down", "Right Stick Left", "Right Stick Right", "Button 1", "Button 2",
-        "Button 3", "Button 4", "A Button", "B Button", "X Button", "Y Button", "Left Stick Button", "Right Stick Button", "L Trigger", "R Trigger",
-        "ZL Trigger", "ZR Trigger", "Plus Button", "Minus Button", "D-Pad Left", "D-Pad Up", "D-Pad Right", "D-Pad Down", "Button 5", "Button 6"
+    const char * MI_InputControlField::Joynames[36] = {
+        "", "", "", "",
+        "", "", "", "",
+        "", "", "", "",
+        "A Button", "B Button", "X Button", "Y Button",
+        "Left Stick Button", "Right Stick Button", "L Trigger", "R Trigger",
+        "ZL Trigger", "ZR Trigger", "Plus Button", "Minus Button",
+        "D-Pad Left", "D-Pad Up", "D-Pad Right", "D-Pad Down",
+        "Left", "Up", "Right", "Down",
+        "Right Stick Left", "Right Stick Up", "Right Stick Right", "Right Stick Down",
     };
 #else
     const char * MI_InputControlField::Joynames[30] = {
@@ -121,6 +131,12 @@ MenuCodeEnum MI_InputControlField::SendInput(CPlayerInput *)
     while (!done) {
         #ifndef __EMSCRIPTEN__
         SDL_WaitEvent(&event);
+        #endif
+
+        #ifdef __SWITCH__
+        if(!platformSwitchSDLEventTransform(&event)) {
+            continue;
+        }
         #endif
 
         /*
@@ -379,7 +395,7 @@ MI_InputControlContainer::MI_InputControlContainer(gfxSprite * spr_button, short
     miDeviceSelectField = new MI_SelectField(spr_button, x + 16, y + 38, "Device", 420, 150);
     miDeviceSelectField->SetItemChangedCode(MENU_CODE_INPUT_DEVICE_CHANGED);
     miDeviceSelectField->Add("Keyboard", -1, "", false, false);
-#ifdef _XBOX
+#if defined(_XBOX) || defined(__SWITCH__)
     miDeviceSelectField->Disable(true);
 
     for (int iJoystick = 0; iJoystick < 4; iJoystick++) {
