@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/lsalzman/enet
+	branch = master
+	commit = 0bd265b230ae47787d2ef793402146ff56805e2b
+	parent = fe50e2f4d46e75fce0ffc66d10cb3df6d2372297
+	method = merge
+	cmdver = 0.4.0
