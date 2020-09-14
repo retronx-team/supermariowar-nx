@@ -100,7 +100,6 @@ SDL_KEYTYPE controlkeys[2][2][4][NUM_KEYS] = { { { {SDLK_LEFT, SDLK_RIGHT, SDLK_
 };
 #endif
 
-
 #ifdef __SWITCH__
 static void _migrateOldSwitchConfig(CInputPlayerControl* playerControls) {
     #define __SWAP_CONTROLS(x, cond, replace) do { if(x == cond) { x = replace; } } while(0)
