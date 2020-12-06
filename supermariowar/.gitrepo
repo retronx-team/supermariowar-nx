@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/mmatyas/supermariowar
 	branch = master
-	commit = 9726d697b0f8828d7dff68ebd1e630c233f59321
+	commit = c9a383be729ea93c5d67333e86cae38cb68ceba1
 	parent = 9e344c0566abc21fab1848c28cfb53a6ebf8507b
 	method = merge
 	cmdver = 0.4.0

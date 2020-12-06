@@ -1489,7 +1489,7 @@ void MenuState::update()
 #endif
 
             g_map->loadMap((*itr).second->filename, read_type_preview);
-            g_map->saveThumbnail(szThumbnail, false);
+            g_map->saveThumbnail(convertPath(szThumbnail), false);
 
             itr++;
         }
