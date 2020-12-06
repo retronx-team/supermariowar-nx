@@ -13,5 +13,10 @@ This uses:
 
 Download the latest release, and extract the archive in the `/switch` folder on your SD Card. Then, run the game from the [hbmenu](https://github.com/switchbrew/nx-hbmenu) using [hbl](https://github.com/switchbrew/nx-hbloader).
 
-## Todo
-* networking
+## Networking
+
+**Note:** Support is experimental
+
+* Network multiplayer requires the use of a server to create rooms and connect to them. Builds can be found in the [upstream repo releases](https://github.com/mmatyas/supermariowar/releases)
+* Cross-platform is supported (PC and everything that the game supports)
+* Everyone playing should probably have the same version to avoid unexpected behavior
