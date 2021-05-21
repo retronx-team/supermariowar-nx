@@ -37,7 +37,7 @@ void userAppInit() {
         printf("appletInitializeGamePlayRecording failed with rc: %x\n", rc);
     }
     appletSetGamePlayRecordingState(1);
-    hidSetNpadJoyHoldType(HidJoyHoldType_Horizontal);
+    hidSetNpadJoyHoldType(HidNpadJoyHoldType_Horizontal);
 }
 
 void userAppExit() {
@@ -54,17 +54,17 @@ void platformSwitchShowControllerOptions(void) {
     arg.enable_explain_text = 1;
     arg.hdr.enable_identification_color = 1;
 
-    hidLaSetExplainText(&arg, "P1 (Red)", CONTROLLER_PLAYER_1);
-    arg.identification_color[CONTROLLER_PLAYER_1] = (HidLaControllerSupportArgColor) {.r = 222, .g = 79, .b = 87, .a = 0xFF};
+    hidLaSetExplainText(&arg, "P1 (Red)", HidNpadIdType_No1);
+    arg.identification_color[HidNpadIdType_No1] = (HidLaControllerSupportArgColor) {.r = 222, .g = 79, .b = 87, .a = 0xFF};
 
-    hidLaSetExplainText(&arg, "P2 (Green)", CONTROLLER_PLAYER_2);
-    arg.identification_color[CONTROLLER_PLAYER_2] = (HidLaControllerSupportArgColor) {.r = 123, .g = 236, .b = 94, .a = 0xFF};
+    hidLaSetExplainText(&arg, "P2 (Green)", HidNpadIdType_No2);
+    arg.identification_color[HidNpadIdType_No2] = (HidLaControllerSupportArgColor) {.r = 123, .g = 236, .b = 94, .a = 0xFF};
 
-    hidLaSetExplainText(&arg, "P3 (Yellow)", CONTROLLER_PLAYER_3);
-    arg.identification_color[CONTROLLER_PLAYER_3] = (HidLaControllerSupportArgColor) {.r = 224, .g = 190, .b = 87, .a = 0xFF};
+    hidLaSetExplainText(&arg, "P3 (Yellow)", HidNpadIdType_No3);
+    arg.identification_color[HidNpadIdType_No3] = (HidLaControllerSupportArgColor) {.r = 224, .g = 190, .b = 87, .a = 0xFF};
 
-    hidLaSetExplainText(&arg, "P4 (Blue)", CONTROLLER_PLAYER_4);
-    arg.identification_color[CONTROLLER_PLAYER_4] = (HidLaControllerSupportArgColor) {.r = 73, .g = 112, .b = 230, .a = 0xFF};
+    hidLaSetExplainText(&arg, "P4 (Blue)", HidNpadIdType_No4);
+    arg.identification_color[HidNpadIdType_No4] = (HidLaControllerSupportArgColor) {.r = 73, .g = 112, .b = 230, .a = 0xFF};
 
     Result rc = hidLaShowControllerSupportForSystem(&resultInfo, &arg, false);
     printf("%s: hidLaShowControllerSupportForSystem exited with rc %x\n", __func__, rc);
