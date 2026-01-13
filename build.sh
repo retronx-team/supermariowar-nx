@@ -63,7 +63,7 @@ DEPS_PLATFORM_LIBS="$(grep -oP -- '-l\K\S*' <<< "$DEPS_LDFLAGS" | paste -sd ";" 
 
 cd "$PROGRAM_BUILD_DIR"
 cmake -G"Unix Makefiles" \
-	-DCMAKE_TOOLCHAIN_FILE="$DEVKITPRO/switch.cmake" \
+	-DCMAKE_TOOLCHAIN_FILE="$DEVKITPRO/cmake/Switch.cmake" \
 	-DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" \
 	-DCMAKE_C_FLAGS="$CFLAGS $DEPS_CFLAGS $DEFINES" \
 	-DCMAKE_CXX_FLAGS="$CXXFLAGS $DEPS_CFLAGS $DEFINES" \
@@ -80,11 +80,11 @@ mkdir -p "$OUT_DIR"
 
 if [[ -n "$SMW_DATA_ARCHIVE_PATH" ]]; then
 	mkdir -p "$OUT_DIR/data"
-	tar xf "$SMW_DATA_ARCHIVE_PATH" --strip-components=1 --keep-newer-files -C "$OUT_DIR/data" 2>&1 | (grep -q -v "is newer or same age" 1>&2 ||:)
+	tar xf "$SMW_DATA_ARCHIVE_PATH" --strip-components=1 --overwrite -C "$OUT_DIR/data" 2>&1
 	echo "Assets copied to $OUT_DIR"
 fi
 
-cp -f "$PROGRAM_BUILD_DIR/Binaries/$CMAKE_BUILD_TYPE/smw" "$OUT_DIR/$APP_NAME$PROGRAM_SUFFIX.elf"
+cp -f "$PROGRAM_BUILD_DIR/Binaries/$CMAKE_BUILD_TYPE/smw.elf" "$OUT_DIR/$APP_NAME$PROGRAM_SUFFIX.elf"
 
 "$DEVKITPRO/tools/bin/nacptool" --create "$APP_TITLE$PROGRAM_SUFFIX" "$APP_AUTHOR" "$APP_VERSION" "$OUT_DIR/$APP_NAME$PROGRAM_SUFFIX.nacp"
 "$DEVKITPRO/tools/bin/elf2nro" "$OUT_DIR/$APP_NAME$PROGRAM_SUFFIX.elf" "$OUT_DIR/$APP_NAME$PROGRAM_SUFFIX.nro" \
